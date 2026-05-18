@@ -26,6 +26,8 @@ const schema = i.schema({
       adsRemoved: i.boolean(),
       totpEnabled: i.boolean(),
       totpSecret: i.string(),
+      activeTheme: i.string(),
+      liquidGlassUnlocked: i.boolean(),
       joinedDate: i.number(),
     }),
     transactions: i.entity({
@@ -56,6 +58,8 @@ export type Schema = {
     adsRemoved: boolean;
     totpEnabled: boolean;
     totpSecret: string;
+    activeTheme?: string;
+    liquidGlassUnlocked?: boolean;
     joinedDate: number;
   };
   transactions: {

@@ -26,6 +26,8 @@ const PAGE_SIZE = 5;
 export default function WalletScreen({ onBack }: WalletScreenProps) {
   const { balance, totalSpent, transactions, topup } = useWallet();
   const { user } = useAuth();
+  const theme = user?.activeTheme || "dark";
+  const isLight = theme === "light";
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState<string>("");
   const [isCustom, setIsCustom] = useState(false);
@@ -98,13 +100,13 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-zinc-950 items-center"
+      className={`flex-1 ${theme === "liquidGlass" ? "bg-transparent" : isLight ? "bg-zinc-50" : "bg-zinc-950"} items-center`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="w-full max-w-lg flex-1">
         <ScrollView className="flex-1 w-full" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
           {/* Header / Current Balance */}
-          <View className="px-5 pt-14 pb-8 bg-zinc-900 border-b border-zinc-800">
+          <View className={`px-5 pt-14 pb-8 ${isLight ? "bg-white" : "bg-zinc-900"} border-b ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
             {/* Back + Title */}
             <View className="flex-row items-center gap-3 mb-6">
               <TouchableOpacity
@@ -117,25 +119,25 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
                 <View className="w-10 h-10 bg-emerald-500/10 rounded-xl items-center justify-center border border-emerald-500/20">
                   <Wallet color="#10b981" size={20} />
                 </View>
-                <Text className="text-white text-xl font-bold tracking-tight">Ka-Ching Store</Text>
+                <Text className={`${isLight ? "text-zinc-900" : "text-white"} text-xl font-bold tracking-tight`}>Ka-Ching Store</Text>
               </View>
             </View>
 
             <Text className="text-zinc-500 text-xs font-medium uppercase tracking-wider mb-1">
               Available Balance
             </Text>
-            <Text className="text-white text-4xl font-bold tracking-tight mb-4">
+            <Text className={`${isLight ? "text-zinc-900" : "text-white"} text-4xl font-bold tracking-tight mb-4`}>
               {formatCurrency(balance)}
             </Text>
 
             <View className="flex-row gap-4">
-              <View className="flex-1 bg-zinc-950/50 rounded-xl p-3 border border-zinc-800/50">
+              <View className={`flex-1 ${isLight ? "bg-zinc-50" : "bg-zinc-950/50"} rounded-xl p-3 border ${isLight ? "border-zinc-200" : "border-zinc-800/50"}`}>
                 <Text className="text-zinc-500 text-xs font-medium">Total Spent</Text>
                 <Text className="text-red-400 font-bold text-base mt-0.5">
                   {formatCurrency(totalSpent)}
                 </Text>
               </View>
-              <View className="flex-1 bg-zinc-950/50 rounded-xl p-3 border border-zinc-800/50">
+              <View className={`flex-1 ${isLight ? "bg-zinc-50" : "bg-zinc-950/50"} rounded-xl p-3 border ${isLight ? "border-zinc-200" : "border-zinc-800/50"}`}>
                 <Text className="text-zinc-500 text-xs font-medium">Current Tier</Text>
                 <Text className="text-blue-400 font-bold text-base mt-0.5">
                   {tierDisplay}
@@ -146,7 +148,7 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
 
           {/* Store Section */}
           <View className="px-5 py-6">
-            <Text className="text-white text-lg font-bold mb-4">Buy Ka-Chings (KC)</Text>
+            <Text className={`${isLight ? "text-zinc-900" : "text-white"} text-lg font-bold mb-4`}>Buy Ka-Chings (KC)</Text>
             
             <View className="flex-row flex-wrap gap-3 mb-4">
               {PRESET_AMOUNTS.map((amount) => (
@@ -160,10 +162,10 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
                   className={`w-[47%] py-4 rounded-2xl items-center justify-center border ${
                     !isCustom && selectedAmount === amount
                       ? "bg-blue-600/20 border-blue-500"
-                      : "bg-zinc-900 border-zinc-800"
+                      : (isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800")
                   }`}
                 >
-                  <Text className={`font-bold text-lg ${!isCustom && selectedAmount === amount ? "text-blue-400" : "text-white"}`}>
+                  <Text className={`font-bold text-lg ${!isCustom && selectedAmount === amount ? "text-blue-400" : (isLight ? "text-zinc-900" : "text-white")}`}>
                     ₹{amount.toLocaleString()}
                   </Text>
                   <Text className="text-zinc-500 text-xs mt-1">💰 {calculateKC(amount)} KC</Text>
@@ -179,13 +181,13 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
               }}
               activeOpacity={0.8}
               className={`p-4 rounded-2xl border ${
-                isCustom ? "bg-blue-600/10 border-blue-500" : "bg-zinc-900 border-zinc-800"
+                isCustom ? "bg-blue-600/10 border-blue-500" : (isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800")
               }`}
             >
-              <Text className="text-white font-bold mb-2">Custom Amount — ₹10,000+</Text>
+              <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold mb-2`}>Custom Amount — ₹10,000+</Text>
               <Text className="text-zinc-600 text-[10px] mb-2">Must be ≥ ₹10,000 • Whole numbers ending with 0 only</Text>
               <TextInput
-                className={`bg-zinc-950 text-white px-4 py-3 rounded-xl border ${isCustom ? "border-blue-500/50" : "border-zinc-800"}`}
+                className={`${isLight ? "bg-zinc-50 text-zinc-900" : "bg-zinc-950 text-white"} px-4 py-3 rounded-xl border ${isCustom ? "border-blue-500/50" : (isLight ? "border-zinc-200" : "border-zinc-800")}`}
                 placeholder="Enter amount (e.g., 15000)"
                 placeholderTextColor="#52525b"
                 keyboardType="number-pad"
@@ -218,12 +220,12 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
                 onPress={handleTopUp}
                 activeOpacity={0.8}
                 className={`py-4 rounded-2xl flex-row items-center justify-center gap-2 ${
-                  (isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100) ? "bg-blue-600" : "bg-zinc-800"
+                  (isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100) ? "bg-blue-600" : (isLight ? "bg-zinc-100" : "bg-zinc-800")
                 }`}
                 disabled={isCustom ? currentAmount < 10000 || currentAmount % 10 !== 0 : currentAmount < 100}
               >
                 <ExternalLink color={(isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100) ? "#fff" : "#52525b"} size={18} />
-                <Text className={`font-bold text-base ${(isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100) ? "text-white" : "text-zinc-500"}`}>
+                <Text className={`font-bold text-base ${(isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100) ? (isLight ? "text-zinc-900" : "text-white") : "text-zinc-500"}`}>
                   {(isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100)
                     ? `Pay ₹${currentAmount.toLocaleString()} via Razorpay`
                     : "Select an amount"}
@@ -231,7 +233,7 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
               </TouchableOpacity>
               {(isCustom ? currentAmount >= 10000 && currentAmount % 10 === 0 : currentAmount >= 100) && (
                 <Text className="text-center text-zinc-500 text-xs mt-3">
-                  You will receive 💰 <Text className="text-white font-bold">{currentKC} KC</Text>
+                  You will receive 💰 <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold`}>{currentKC} KC</Text>
                 </Text>
               )}
             </View>
@@ -239,10 +241,10 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
 
           {/* TnC Box */}
           <View className="px-5 py-4">
-            <View className="bg-zinc-900/50 p-4 rounded-2xl border border-zinc-800/50">
+            <View className={`${isLight ? "bg-white" : "bg-zinc-900/50"} p-4 rounded-2xl border ${isLight ? "border-zinc-200" : "border-zinc-800/50"}`}>
               <View className="flex-row items-center gap-2 mb-2">
                 <Info color="#a1a1aa" size={16} />
-                <Text className="text-zinc-300 font-bold text-sm">Terms & Conditions</Text>
+                <Text className={`${isLight ? "text-zinc-700" : "text-zinc-300"} font-bold text-sm`}>Terms & Conditions</Text>
               </View>
               <Text className="text-zinc-500 text-xs leading-5">
                 • Ka-Chings (KC) are a virtual utility token and have no real-world monetary value.{'\n'}
@@ -258,14 +260,14 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
 
           {/* Transaction History — Tabbed */}
           <View className="px-5 pt-6">
-            <Text className="text-white text-lg font-bold mb-4">Transaction History</Text>
+            <Text className={`${isLight ? "text-zinc-900" : "text-white"} text-lg font-bold mb-4`}>Transaction History</Text>
 
             {/* Tabs: KC Usage / Top-Up */}
             <View className="flex-row gap-2 mb-4">
               <TouchableOpacity
                 onPress={() => { setActiveTab("spend"); setVisibleCount(PAGE_SIZE); }}
                 className={`flex-1 py-3 rounded-xl items-center border ${
-                  activeTab === "spend" ? "bg-red-500/10 border-red-500/30" : "bg-zinc-900 border-zinc-800"
+                  activeTab === "spend" ? "bg-red-500/10 border-red-500/30" : (isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800")
                 }`}
               >
                 <Text className={`font-bold text-xs uppercase tracking-wider ${activeTab === "spend" ? "text-red-400" : "text-zinc-500"}`}>
@@ -275,7 +277,7 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
               <TouchableOpacity
                 onPress={() => { setActiveTab("topup"); setVisibleCount(PAGE_SIZE); }}
                 className={`flex-1 py-3 rounded-xl items-center border ${
-                  activeTab === "topup" ? "bg-emerald-500/10 border-emerald-500/30" : "bg-zinc-900 border-zinc-800"
+                  activeTab === "topup" ? "bg-emerald-500/10 border-emerald-500/30" : (isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800")
                 }`}
               >
                 <Text className={`font-bold text-xs uppercase tracking-wider ${activeTab === "topup" ? "text-emerald-400" : "text-zinc-500"}`}>
@@ -286,7 +288,7 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
 
             {/* Transaction List */}
             {paginatedTxns.length === 0 ? (
-              <View className="bg-zinc-900 rounded-2xl p-8 items-center border border-zinc-800">
+              <View className={`${isLight ? "bg-white" : "bg-zinc-900"} rounded-2xl p-8 items-center border ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
                 <CreditCard color="#52525b" size={32} />
                 <Text className="text-zinc-500 mt-3 font-medium">
                   {activeTab === "spend" ? "No KC usage yet" : "No top-ups yet"}
@@ -297,10 +299,10 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
                 {paginatedTxns.map((txn: Transaction) => (
                   <View
                     key={txn.id}
-                    className="bg-zinc-900 p-4 rounded-2xl border border-zinc-800"
+                    className={`${isLight ? "bg-white" : "bg-zinc-900"} p-4 rounded-2xl border ${isLight ? "border-zinc-200" : "border-zinc-800"}`}
                   >
                     <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-white font-semibold text-sm flex-1 mr-3" numberOfLines={1}>
+                      <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-semibold text-sm flex-1 mr-3`} numberOfLines={1}>
                         {txn.description}
                       </Text>
                       <Text
@@ -331,7 +333,7 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
                 {hasMore && (
                   <TouchableOpacity
                     onPress={() => setVisibleCount((prev) => prev + PAGE_SIZE)}
-                    className="flex-row items-center justify-center gap-1.5 py-3 bg-zinc-900 rounded-xl border border-zinc-800 mt-1"
+                    className={`flex-row items-center justify-center gap-1.5 py-3 ${isLight ? "bg-zinc-50" : "bg-zinc-900"} rounded-xl border ${isLight ? "border-zinc-200" : "border-zinc-800"} mt-1`}
                   >
                     <ChevronDown color="#3b82f6" size={16} />
                     <Text className="text-blue-400 font-semibold text-xs">

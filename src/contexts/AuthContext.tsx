@@ -16,6 +16,8 @@ export interface User {
   adsRemoved: boolean;
   totpEnabled: boolean;
   totpSecret: string;
+  activeTheme: "dark" | "light" | "liquidGlass";
+  liquidGlassUnlocked: boolean;
   isGuest: boolean;
 }
 
@@ -88,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         adsRemoved: profile?.adsRemoved || false,
         totpEnabled: profile?.totpEnabled || false,
         totpSecret: profile?.totpSecret || "",
+        activeTheme: (profile?.activeTheme || "dark") as "dark" | "light" | "liquidGlass",
+        liquidGlassUnlocked: profile?.liquidGlassUnlocked || false,
         isGuest: false,
       }
     : null;
@@ -121,6 +125,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             adsRemoved: false,
             totpEnabled: false,
             totpSecret: "",
+            activeTheme: "dark",
+            liquidGlassUnlocked: false,
             joinedDate: Date.now(),
           })
         );

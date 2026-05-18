@@ -10,6 +10,7 @@ import {
 import { ArrowLeft, Delete, Lock, Unlock } from "lucide-react-native";
 import { useWallet } from "../contexts/WalletContext";
 import { formatCurrency } from "../utils/currency";
+import PaymentModal from "../components/PaymentModal";
 
 const COST_PER_RESULT = 10;
 
@@ -23,6 +24,7 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
   const [expression, setExpression] = useState("");
   const [result, setResult] = useState<string | null>(null);
   const [isResultLocked, setIsResultLocked] = useState(true);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const { width } = useWindowDimensions();
   const isWide = width > 500;
   const buttonSize = isWide ? 80 : 68;
@@ -82,22 +84,19 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
       return;
     }
 
-    Alert.alert(
-      "🔓 Unlock Result",
-      `Cost: ${formatCurrency(COST_PER_RESULT)}\n\nBalance: ${formatCurrency(balance)} → ${formatCurrency(balance - COST_PER_RESULT)}\n\n⚠️ Non-refundable.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: `💰 Pay ${COST_PER_RESULT} KC`,
-          onPress: () => {
-            const success = spend(COST_PER_RESULT, "Calculator Result Unlock");
-            if (success) {
-              setIsResultLocked(false);
-            }
-          },
-        },
-      ]
-    );
+    setShowPaymentModal(true);
+  };
+
+  const handlePayConfirmed = () => {
+    const success = spend(COST_PER_RESULT, "Calculator Result Unlock");
+    if (success) {
+      setIsResultLocked(false);
+      setShowPaymentModal(false);
+    }
+  };
+
+  const handlePayCancel = () => {
+    setShowPaymentModal(false);
   };
 
   const getButtonStyle = (btn: string) => {
@@ -115,7 +114,7 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
   };
 
   return (
-    <View className="flex-1 bg-zinc-950 items-center">
+    <View className="flex-1 bg-transparent items-center">
       <View className="w-full max-w-lg flex-1">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 pt-14 pb-3">
@@ -212,6 +211,16 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
           </View>
         </View>
       </View>
+
+      <PaymentModal
+        visible={showPaymentModal}
+        title="Unlock Calculation Result?"
+        amount={COST_PER_RESULT}
+        amountString={`💰 ${COST_PER_RESULT} KC`}
+        onPay={handlePayConfirmed}
+        onCancel={handlePayCancel}
+        cancelText="Keep Locked"
+      />
     </View>
   );
 }

@@ -76,9 +76,9 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
     Keyboard.dismiss();
     setPaymentConfig({
       visible: true,
-      title: `Save Note? That will be 99 KC.`,
-      amount: 99,
-      amountString: `💰 99 KC`,
+      title: `Save Note? That will be 10 KC.`,
+      amount: 10,
+      amountString: `💰 10 KC`,
       actionType: "save",
       targetNoteId: null,
       cancelText: "Discard (Free)"
@@ -93,9 +93,9 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
     }
     setPaymentConfig({
       visible: true,
-      title: `Unlock Memory? 50 KC admission fee.`,
-      amount: 50,
-      amountString: `💰 50 KC`,
+      title: `Unlock Memory? 10 KC admission fee.`,
+      amount: 10,
+      amountString: `💰 10 KC`,
       actionType: "unlock",
       targetNoteId: note.id,
       cancelText: "Keep Locked"
@@ -105,9 +105,9 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
   const handleDeletePress = (noteId: string) => {
     setPaymentConfig({
       visible: true,
-      title: `Erase History? 200 KC Disposal Fee.`,
-      amount: 200,
-      amountString: `💰 200 KC`,
+      title: `Erase History? 10 KC Disposal Fee.`,
+      amount: 10,
+      amountString: `💰 10 KC`,
       actionType: "delete",
       targetNoteId: noteId,
       cancelText: "Keep Note"
@@ -185,10 +185,10 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
   };
 
   return (
-    <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView className="flex-1 bg-transparent" behavior={Platform.OS === "ios" ? "padding" : "height"}>
 
       {/* Header */}
-      <View className="px-5 pt-14 pb-4 border-b border-zinc-800/60 bg-zinc-950">
+      <View className="px-5 pt-14 pb-4 border-b border-zinc-800/60 bg-transparent">
         <View className="flex-row items-center justify-between">
           <TouchableOpacity
             onPress={onBack}

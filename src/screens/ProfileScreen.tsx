@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import {
   User,
@@ -27,6 +28,7 @@ import {
   ShieldCheck,
   ShieldOff,
   Mail,
+  Palette,
 } from "lucide-react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { useWallet } from "../contexts/WalletContext";
@@ -46,6 +48,9 @@ interface ProfileScreenProps {
 
 export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth }: ProfileScreenProps) {
   const { user, isGuest, isLoggedIn, logout, promptLogin } = useAuth();
+  const theme = user?.activeTheme || "dark";
+  const isLight = theme === "light";
+  
   const { balance, totalSpent, transactions, spend, canAfford } = useWallet();
   const [isEditingUsername, setIsEditingUsername] = useState(false);
   const [editUsername, setEditUsername] = useState("");
@@ -58,13 +63,63 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [paymentModalConfig, setPaymentModalConfig] = useState<{
-    visible: boolean;
-    title: string;
-    amount: number;
-    amountString: string;
-    onPay: () => void;
-  } | null>(null);
+  // Safe Payment Modal State
+  const [pmVisible, setPmVisible] = useState(false);
+  const [pmTitle, setPmTitle] = useState("");
+  const [pmAmount, setPmAmount] = useState(0);
+  const [pmAmountStr, setPmAmountStr] = useState("");
+  const pmOnPayRef = useRef<(() => void) | null>(null);
+
+  // Theme Picker
+  const [showThemePicker, setShowThemePicker] = useState(false);
+
+  const handleThemeSelect = (selectedTheme: "light" | "dark" | "liquidGlass") => {
+    if (!user) return;
+    if (selectedTheme === user.activeTheme) {
+      setShowThemePicker(false);
+      return;
+    }
+
+    if (selectedTheme === "liquidGlass" && !user.liquidGlassUnlocked) {
+      // Must purchase
+      if (!canAfford(500)) {
+        Alert.alert(
+          "💰 Insufficient Balance",
+          `Unlocking Liquid Glass costs 💰 500 KC.\n\nYour balance: ${formatCurrency(balance)}\n\nPlease top up your wallet first.`,
+          [
+            { text: "Cancel", style: "cancel" },
+            ...(onNavigateToStore ? [{ text: "🏪 Go to Store", onPress: onNavigateToStore }] : []),
+          ]
+        );
+        return;
+      }
+      
+      setShowThemePicker(false); // Close theme picker before showing payment modal
+
+      setPmTitle("Unlock Liquid Glass");
+      setPmAmount(500);
+      setPmAmountStr("💰 500 KC");
+      pmOnPayRef.current = () => {
+        const success = spend(500, "Theme: Liquid Glass Unlock");
+        if (success) {
+          db.transact(
+            db.tx.profiles[user.id].update({
+              liquidGlassUnlocked: true,
+              activeTheme: "liquidGlass"
+            })
+          );
+          setPmVisible(false);
+          Alert.alert("Theme Unlocked! 🎉", "Liquid Glass is now active!");
+        }
+      };
+      setPmVisible(true);
+      return;
+    }
+
+    // Free themes — apply immediately
+    setShowThemePicker(false);
+    db.transact(db.tx.profiles[user.id].update({ activeTheme: selectedTheme }));
+  };
 
   // ─── Username availability checker ──────────────────────────────────
   const checkUsernameAvailability = async (name: string) => {
@@ -123,21 +178,19 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
       return;
     }
 
-    setPaymentModalConfig({
-      visible: true,
-      title: `Change Username to @${trimmed}`,
-      amount: USERNAME_CHANGE_COST,
-      amountString: `💰 ${USERNAME_CHANGE_COST} KC`,
-      onPay: () => {
-        const success = spend(USERNAME_CHANGE_COST, `Username Change → @${trimmed}`);
-        if (success) {
-          db.transact(db.tx.profiles[user.id].update({ username: trimmed }));
-          setIsEditingUsername(false);
-          setPaymentModalConfig(null);
-          Alert.alert("Success ✓", `Your username is now @${trimmed}.`);
-        }
+    setPmTitle(`Change Username to @${trimmed}`);
+    setPmAmount(USERNAME_CHANGE_COST);
+    setPmAmountStr(`💰 ${USERNAME_CHANGE_COST} KC`);
+    pmOnPayRef.current = () => {
+      const success = spend(USERNAME_CHANGE_COST, `Username Change → @${trimmed}`);
+      if (success) {
+        db.transact(db.tx.profiles[user.id].update({ username: trimmed }));
+        setIsEditingUsername(false);
+        setPmVisible(false);
+        Alert.alert("Success ✓", `Your username is now @${trimmed}.`);
       }
-    });
+    };
+    setPmVisible(true);
   };
 
   // ─── Display name change (FREE) ─────────────────────────────────────
@@ -178,20 +231,19 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
       );
       return;
     }
-    setPaymentModalConfig({
-      visible: true,
-      title: "Remove Ads Permanently",
-      amount: AD_REMOVAL_COST,
-      amountString: `💰 ${AD_REMOVAL_COST} KC`,
-      onPay: () => {
-        const success = spend(AD_REMOVAL_COST, "Ad Removal — Permanent");
-        if (success) {
-          db.transact(db.tx.profiles[user.id].update({ adsRemoved: true }));
-          setPaymentModalConfig(null);
-          Alert.alert("Ads Removed! 🎉", "You will no longer see ad banners.");
-        }
+    
+    setPmTitle("Remove Ads Permanently");
+    setPmAmount(AD_REMOVAL_COST);
+    setPmAmountStr(`💰 ${AD_REMOVAL_COST} KC`);
+    pmOnPayRef.current = () => {
+      const success = spend(AD_REMOVAL_COST, "Ad Removal — Permanent");
+      if (success) {
+        db.transact(db.tx.profiles[user.id].update({ adsRemoved: true }));
+        setPmVisible(false);
+        Alert.alert("Ads Removed! 🎉", "You will no longer see ad banners.");
       }
-    });
+    };
+    setPmVisible(true);
   };
 
   const handleLogout = () => {
@@ -203,7 +255,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-zinc-950 items-center"
+      className={`flex-1 ${theme === "liquidGlass" ? "bg-transparent" : isLight ? "bg-zinc-50" : "bg-zinc-950"} items-center`}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <View className="w-full max-w-lg flex-1">
@@ -214,7 +266,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
               {/* Avatar */}
               <TouchableOpacity onPress={() => isLoggedIn && setShowAvatarPicker(!showAvatarPicker)} activeOpacity={0.8}>
                 {isGuest ? (
-                  <View className="w-24 h-24 bg-zinc-900 rounded-3xl items-center justify-center border-2 border-zinc-800">
+                  <View className={`w-24 h-24 ${isLight ? "bg-white" : "bg-zinc-900"} rounded-3xl items-center justify-center border-2 ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
                     <User color="#52525b" size={40} />
                   </View>
                 ) : (
@@ -234,7 +286,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
 
               {/* Avatar Picker */}
               {showAvatarPicker && isLoggedIn && (
-                <View className="flex-row flex-wrap justify-center gap-3 mt-4 bg-zinc-900 p-4 rounded-2xl border border-zinc-800">
+                <View className={`flex-row flex-wrap justify-center gap-3 mt-4 ${isLight ? "bg-white" : "bg-zinc-900"} p-4 rounded-2xl border ${isLight ? "border-zinc-200" : "border-zinc-800"}`}>
                   {AVATAR_KEYS.map((key) => {
                     const isActive = key === (user?.avatar || "default");
                     return (
@@ -264,7 +316,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                   {isEditingDisplayName ? (
                     <View className="items-center w-full">
                       <TextInput
-                        className="bg-zinc-900 text-white px-4 py-2 rounded-xl border border-zinc-700 min-w-[200px] text-center"
+                        className={`${isLight ? "bg-white text-zinc-900 border-zinc-200" : "bg-zinc-900 text-white border-zinc-700"} px-4 py-2 rounded-xl border min-w-[200px] text-center`}
                         value={editDisplayName}
                         onChangeText={setEditDisplayName}
                         autoFocus
@@ -273,8 +325,8 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                         placeholderTextColor="#52525b"
                       />
                       <View className="flex-row gap-2 mt-2">
-                        <TouchableOpacity onPress={() => setIsEditingDisplayName(false)} className="px-4 py-2 bg-zinc-800 rounded-xl">
-                          <Text className="text-zinc-400 font-semibold text-xs">Cancel</Text>
+                        <TouchableOpacity onPress={() => setIsEditingDisplayName(false)} className={`px-4 py-2 ${isLight ? "bg-zinc-200" : "bg-zinc-800"} rounded-xl`}>
+                          <Text className={`${isLight ? "text-zinc-700" : "text-zinc-400"} font-semibold text-xs`}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity onPress={handleDisplayNameSave} className="px-4 py-2 bg-emerald-600 rounded-xl">
                           <Text className="text-white font-semibold text-xs">Save (Free)</Text>
@@ -283,7 +335,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                     </View>
                   ) : (
                     <View className="flex-row items-center gap-2">
-                      <Text className="text-white text-xl font-bold tracking-tight">
+                      <Text className={`${isLight ? "text-zinc-900" : "text-white"} text-xl font-bold tracking-tight`}>
                         {user?.displayName || user?.username}
                       </Text>
                       <TouchableOpacity
@@ -304,7 +356,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                       <View className="flex-row items-center gap-2">
                         <Text className="text-zinc-500 text-sm">@</Text>
                         <TextInput
-                          className="bg-zinc-900 text-white px-4 py-2 rounded-xl border border-zinc-700 min-w-[160px]"
+                          className={`${isLight ? "bg-white text-zinc-900 border-zinc-200" : "bg-zinc-900 text-white border-zinc-700"} px-4 py-2 rounded-xl border min-w-[160px]`}
                           value={editUsername}
                           onChangeText={handleUsernameInputChange}
                           autoFocus
@@ -327,8 +379,8 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                         <Text className="text-red-400 text-xs mt-1 font-medium">Username is already taken</Text>
                       )}
                       <View className="flex-row gap-2 mt-2">
-                        <TouchableOpacity onPress={() => setIsEditingUsername(false)} className="px-4 py-2 bg-zinc-800 rounded-xl">
-                          <Text className="text-zinc-400 font-semibold text-xs">Cancel</Text>
+                        <TouchableOpacity onPress={() => setIsEditingUsername(false)} className={`px-4 py-2 ${isLight ? "bg-zinc-200" : "bg-zinc-800"} rounded-xl`}>
+                          <Text className={`${isLight ? "text-zinc-700" : "text-zinc-400"} font-semibold text-xs`}>Cancel</Text>
                         </TouchableOpacity>
                         {!canAfford(USERNAME_CHANGE_COST) ? (
                           <TouchableOpacity
@@ -346,7 +398,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                           </TouchableOpacity>
                         )}
                       </View>
-                      <Text className="text-zinc-600 text-[10px] mt-1 italic">
+                      <Text className={`${isLight ? "text-zinc-500" : "text-zinc-600"} text-[10px] mt-1 italic`}>
                         Username change costs 💰 {USERNAME_CHANGE_COST} KC • Non-refundable
                       </Text>
                     </View>
@@ -359,8 +411,8 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                         setIsEditingUsername(true);
                       }}
                     >
-                      <Text className="text-zinc-500 text-xs">@{user?.username}</Text>
-                      <Edit2 color="#3f3f46" size={10} />
+                      <Text className={`${isLight ? "text-zinc-500" : "text-zinc-400"} text-xs`}>@{user?.username}</Text>
+                      <Edit2 color="#52525b" size={10} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -369,7 +421,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
               {/* Guest */}
               {isGuest && (
                 <View className="items-center mt-3">
-                  <Text className="text-white text-xl font-bold tracking-tight">Guest User</Text>
+                  <Text className={`${isLight ? "text-zinc-900" : "text-white"} text-xl font-bold tracking-tight`}>Guest User</Text>
                   <TouchableOpacity
                     onPress={promptLogin}
                     className="mt-3 flex-row items-center gap-2 bg-blue-600/20 px-5 py-2.5 rounded-xl border border-blue-500/30"
@@ -391,20 +443,20 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
             {/* Stats */}
             {isLoggedIn && (
               <View className="flex-row gap-3 mb-8">
-                <View className="flex-1 bg-zinc-900 rounded-2xl p-4 items-center border border-zinc-800/80">
+                <View className={`flex-1 ${isLight ? "bg-white" : "bg-zinc-900"} rounded-2xl p-4 items-center border ${isLight ? "border-zinc-200" : "border-zinc-800/80"}`}>
                   <Wallet color="#10b981" size={20} />
-                  <Text className="text-white font-bold text-lg mt-2">{formatCurrency(balance)}</Text>
-                  <Text className="text-zinc-500 text-xs mt-0.5">Balance</Text>
+                  <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold text-lg mt-2`}>{formatCurrency(balance)}</Text>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs mt-0.5`}>Balance</Text>
                 </View>
-                <View className="flex-1 bg-zinc-900 rounded-2xl p-4 items-center border border-zinc-800/80">
+                <View className={`flex-1 ${isLight ? "bg-white" : "bg-zinc-900"} rounded-2xl p-4 items-center border ${isLight ? "border-zinc-200" : "border-zinc-800/80"}`}>
                   <Zap color="#3b82f6" size={20} />
-                  <Text className="text-white font-bold text-lg mt-2">{formatCurrency(totalSpent)}</Text>
-                  <Text className="text-zinc-500 text-xs mt-0.5">Total Spent</Text>
+                  <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold text-lg mt-2`}>{formatCurrency(totalSpent)}</Text>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs mt-0.5`}>Total Spent</Text>
                 </View>
-                <View className="flex-1 bg-zinc-900 rounded-2xl p-4 items-center border border-zinc-800/80">
+                <View className={`flex-1 ${isLight ? "bg-white" : "bg-zinc-900"} rounded-2xl p-4 items-center border ${isLight ? "border-zinc-200" : "border-zinc-800/80"}`}>
                   <Calculator color="#a855f7" size={20} />
-                  <Text className="text-white font-bold text-lg mt-2">{transactions.length}</Text>
-                  <Text className="text-zinc-500 text-xs mt-0.5">Txns</Text>
+                  <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold text-lg mt-2`}>{transactions.length}</Text>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs mt-0.5`}>Txns</Text>
                 </View>
               </View>
             )}
@@ -413,15 +465,16 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
             {isLoggedIn && !user?.adsRemoved && <AdBanner size="banner" />}
 
             {/* Settings */}
-            <Text className="text-zinc-500 font-semibold uppercase tracking-wider text-xs mb-3">
+            <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} font-semibold uppercase tracking-wider text-xs mb-3`}>
               Settings
             </Text>
 
-            <View className="bg-zinc-900 rounded-2xl border border-zinc-800/80 overflow-hidden">
+            <View className={`${isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800/80"} rounded-2xl border overflow-hidden`}>
               {isLoggedIn ? (
                 <>
                   {/* ZestyAuth 2FA */}
                   <MenuRow
+                    isLight={isLight}
                     icon={
                       user?.totpEnabled
                         ? <ShieldCheck color="#3b82f6" size={18} />
@@ -430,9 +483,21 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                     label="ZestyAuth 2FA"
                     subtitle={user?.totpEnabled ? "Active 🛡️ — Tap to manage" : "Not enabled — Tap to setup"}
                     badge={user?.totpEnabled ? "verified" : undefined}
-                    onPress={onNavigateToZestyAuth}
+                    onPress={() => onNavigateToZestyAuth && onNavigateToZestyAuth()}
+                  />
+                  {/* App Theme */}
+                  <MenuRow
+                    isLight={isLight}
+                    icon={<Palette color="#a855f7" size={18} />}
+                    label="App Theme"
+                    subtitle={
+                      theme === "liquidGlass" ? "Liquid Glass" : 
+                      theme === "light" ? "Light Mode" : "Dark Mode"
+                    }
+                    onPress={() => setShowThemePicker(true)}
                   />
                   <MenuRow
+                    isLight={isLight}
                     icon={<Edit2 color="#3b82f6" size={18} />}
                     label="Change Username"
                     subtitle={`💰 ${USERNAME_CHANGE_COST} KC per change`}
@@ -443,6 +508,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                     }}
                   />
                   <MenuRow
+                    isLight={isLight}
                     icon={<Edit2 color="#10b981" size={18} />}
                     label="Change Display Name"
                     subtitle="Free"
@@ -452,6 +518,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                     }}
                   />
                   <MenuRow
+                    isLight={isLight}
                     icon={user?.adsRemoved ? <Eye color="#10b981" size={18} /> : <Ban color="#f59e0b" size={18} />}
                     label={user?.adsRemoved ? "Ads Removed ✓" : "Remove Ads"}
                     subtitle={user?.adsRemoved ? "Ad-free experience" : `💰 ${AD_REMOVAL_COST} KC — One-time`}
@@ -459,17 +526,17 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
                   />
                 </>
               ) : (
-                <MenuRow icon={<LogIn color="#3b82f6" size={18} />} label="Sign In to unlock features" onPress={promptLogin} />
+                <MenuRow isLight={isLight} icon={<LogIn color="#3b82f6" size={18} />} label="Sign In to unlock features" onPress={promptLogin} />
               )}
             </View>
 
             {/* App Unique ID */}
             {isLoggedIn && (
-              <View className="mt-4 bg-zinc-900/50 px-4 py-3 rounded-xl border border-zinc-800/30">
-                <Text className="text-zinc-700 text-[10px] uppercase tracking-widest font-medium mb-1">
+              <View className={`mt-4 ${isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800/30"} px-4 py-3 rounded-xl border`}>
+                <Text className={`${isLight ? "text-zinc-500" : "text-zinc-700"} text-[10px] uppercase tracking-widest font-medium mb-1`}>
                   App ID
                 </Text>
-                <Text className="text-zinc-600 text-xs font-mono tracking-wider">
+                <Text className={`${isLight ? "text-zinc-600" : "text-zinc-600"} text-xs font-mono tracking-wider`}>
                   {user?.appUniqueId || "----------"}
                 </Text>
               </View>
@@ -488,9 +555,9 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
             <View className="items-center mt-6">
               <View className="flex-row items-center gap-1.5">
                 <Mail color="#52525b" size={12} />
-                <Text className="text-zinc-600 text-xs">Need help?</Text>
+                <Text className={`${isLight ? "text-zinc-500" : "text-zinc-600"} text-xs`}>Need help?</Text>
               </View>
-              <Text className="text-blue-400/50 text-xs font-medium mt-1" selectable>
+              <Text className="text-blue-400/80 text-xs font-medium mt-1" selectable>
                 support@zestyahh.com
               </Text>
             </View>
@@ -509,63 +576,134 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
 
             {/* App Info */}
             <View className="items-center mt-8">
-              <Text className="text-zinc-700 text-xs">Balance Unlimited v1.0.0</Text>
-              <Text className="text-zinc-800 text-xs mt-1">{user?.tier || "YaBasic"}™ Tier</Text>
+              <Text className={`${isLight ? "text-zinc-500" : "text-zinc-700"} text-xs`}>Balance Unlimited v1.0.0</Text>
+              <Text className={`${isLight ? "text-zinc-400" : "text-zinc-800"} text-xs mt-1`}>{user?.tier || "YaBasic"}™ Tier</Text>
             </View>
           </View>
         </ScrollView>
       </View>
 
-      {/* Payment Modal for KC transactions */}
-      {paymentModalConfig && (
-        <PaymentModal
-          visible={paymentModalConfig.visible}
-          title={paymentModalConfig.title}
-          amount={paymentModalConfig.amount}
-          amountString={paymentModalConfig.amountString}
-          onPay={paymentModalConfig.onPay}
-          onCancel={() => setPaymentModalConfig(null)}
-          cancelText="Cancel"
-        />
-      )}
+      {/* Payment Modal for KC transactions — always mounted */}
+      <PaymentModal
+        visible={pmVisible}
+        title={pmTitle}
+        amount={pmAmount}
+        amountString={pmAmountStr}
+        onPay={() => { if (pmOnPayRef.current) pmOnPayRef.current(); }}
+        onCancel={() => setPmVisible(false)}
+        cancelText="Cancel"
+      />
+
+      {/* Theme Picker Modal */}
+      <Modal
+        visible={showThemePicker}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowThemePicker(false)}
+      >
+        <View className="flex-1 bg-black/60 justify-center items-center p-4">
+          <View className={`${isLight ? "bg-white border-zinc-200" : "bg-zinc-900 border-zinc-800"} w-full max-w-sm rounded-3xl border overflow-hidden`}>
+            <View className={`p-5 border-b ${isLight ? "border-zinc-200" : "border-zinc-800"} flex-row justify-between items-center`}>
+              <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold text-lg`}>App Theme</Text>
+              <TouchableOpacity onPress={() => setShowThemePicker(false)}>
+                <XCircle color="#52525b" size={24} />
+              </TouchableOpacity>
+            </View>
+
+            <View className="p-2">
+              <ThemeOption
+                isLight={isLight}
+                title="Light Mode"
+                subtitle="Free"
+                icon={<Palette color="#f59e0b" size={20} />}
+                isActive={theme === "light"}
+                onPress={() => handleThemeSelect("light")}
+              />
+              <ThemeOption
+                isLight={isLight}
+                title="Dark Mode"
+                subtitle="Free"
+                icon={<Palette color="#3b82f6" size={20} />}
+                isActive={theme === "dark"}
+                onPress={() => handleThemeSelect("dark")}
+              />
+              <ThemeOption
+                isLight={isLight}
+                title="Liquid Glass"
+                subtitle={user?.liquidGlassUnlocked ? "Unlocked ✓" : "💰 500 KC"}
+                icon={<Zap color="#a855f7" size={20} />}
+                isActive={theme === "liquidGlass"}
+                onPress={() => handleThemeSelect("liquidGlass")}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
+function ThemeOption({ isLight, title, subtitle, icon, isActive, onPress }: any) {
+  return (
+    <TouchableOpacity
+      className={`flex-row justify-between items-center p-4 rounded-2xl ${isActive ? (isLight ? "bg-zinc-100" : "bg-zinc-800") : ""}`}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View className="flex-row items-center gap-3">
+        <View className="w-10 h-10 bg-zinc-800/50 rounded-full items-center justify-center">
+          {icon}
+        </View>
+        <View>
+          <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold text-base`}>{title}</Text>
+          <Text className={`${isActive ? "text-emerald-400 font-medium" : "text-zinc-500"} text-xs mt-0.5`}>{subtitle}</Text>
+        </View>
+      </View>
+      {isActive && <CheckCircle2 color="#10b981" size={20} />}
+    </TouchableOpacity>
+  );
+}
+
 function MenuRow({
+  isLight,
   icon,
   label,
   subtitle,
   badge,
-  onPress,
+  onPress
 }: {
+  isLight: boolean;
   icon: React.ReactNode;
   label: string;
   subtitle?: string;
-  badge?: "verified";
-  onPress?: () => void;
+  badge?: string;
+  onPress: () => void;
 }) {
   return (
     <TouchableOpacity
-      className="flex-row items-center px-4 py-4 border-b border-zinc-800/50"
-      activeOpacity={0.7}
+      className={`flex-row items-center justify-between p-4 border-b ${isLight ? "border-zinc-100" : "border-zinc-800/50"}`}
       onPress={onPress}
+      activeOpacity={0.7}
     >
-      <View className="w-9 h-9 bg-zinc-950 rounded-xl items-center justify-center mr-3">
-        {icon}
-      </View>
-      <View className="flex-1">
-        <View className="flex-row items-center gap-2">
-          <Text className="text-white font-semibold text-sm">{label}</Text>
-          {badge === "verified" && (
-            <View className="bg-blue-600 px-1.5 py-0.5 rounded">
-              <Text className="text-white text-[9px] font-bold">2FA</Text>
-            </View>
+      <View className="flex-row items-center gap-3 flex-1">
+        <View className={`w-10 h-10 ${isLight ? "bg-zinc-100" : "bg-zinc-800/50"} rounded-xl items-center justify-center`}>
+          {icon}
+        </View>
+        <View className="flex-1">
+          <View className="flex-row items-center gap-2">
+            <Text className={`${isLight ? "text-zinc-900" : "text-white"} font-bold text-base`}>{label}</Text>
+            {badge === "verified" && (
+              <View className="bg-blue-500/20 px-1.5 py-0.5 rounded border border-blue-500/30">
+                <Text className="text-blue-400 text-[9px] font-bold uppercase tracking-wider">Verified</Text>
+              </View>
+            )}
+          </View>
+          {subtitle && (
+            <Text className={`${isLight ? "text-zinc-500" : "text-zinc-400"} text-xs mt-0.5`}>{subtitle}</Text>
           )}
         </View>
-        {subtitle && <Text className="text-zinc-600 text-xs mt-0.5">{subtitle}</Text>}
       </View>
-      <ChevronRight color="#3f3f46" size={18} />
+      <ChevronRight color="#52525b" size={20} />
     </TouchableOpacity>
   );
 }
