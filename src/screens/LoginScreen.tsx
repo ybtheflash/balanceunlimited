@@ -18,7 +18,7 @@ interface LoginScreenProps {
 }
 
 export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
-  const { sendMagicCode, verifyCode, continueAsGuest } = useAuth();
+  const { sendMagicCode, verifyCode, continueAsGuest, devLogin } = useAuth();
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [username, setUsername] = useState("");
@@ -187,6 +187,16 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
             >
               <Text className="text-zinc-400 font-semibold text-sm">Continue as Guest</Text>
               <Text className="text-zinc-600 text-xs mt-1">Utilities are view-only</Text>
+            </TouchableOpacity>
+
+            {/* Dev Admin Login */}
+            <TouchableOpacity
+              className="border border-amber-500/30 py-4 rounded-2xl items-center bg-amber-500/5"
+              onPress={devLogin}
+              activeOpacity={0.7}
+            >
+              <Text className="text-amber-400 font-bold text-sm">👑 Dev Admin Login</Text>
+              <Text className="text-amber-600 text-xs mt-1">Full access • 1000 KC • No email needed</Text>
             </TouchableOpacity>
           </View>
         </View>

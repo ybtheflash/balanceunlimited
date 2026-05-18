@@ -1,16 +1,131 @@
-import React from "react";
-import { View, Text, TouchableOpacity } from "react-native";
-import { ArrowLeft, FileText, Lock, Sparkles, Clock } from "lucide-react-native";
+import React, { useState, useEffect } from "react";
+import { 
+  View, Text, TextInput, TouchableOpacity, ScrollView, 
+  Alert, KeyboardAvoidingView, Platform, Keyboard
+} from "react-native";
+import { ArrowLeft, Save, Trash2, Lock, FileText } from "lucide-react-native";
+import { useWallet } from "../contexts/WalletContext";
+import FlexScoreWidget from "../components/FlexScoreWidget";
+import PaymentModal from "../components/PaymentModal";
 
 interface NotepadScreenProps {
   onBack: () => void;
 }
 
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  isUnlocked: boolean;
+}
+
+import { formatCurrency } from "../utils/currency";
+
 export default function NotepadScreen({ onBack }: NotepadScreenProps) {
+  const { totalSpent, spend } = useWallet();
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [currentText, setCurrentText] = useState("");
+  
+  // Modals state
+  const [paymentConfig, setPaymentConfig] = useState<{
+    visible: boolean;
+    title: string;
+    amount: number;
+    actionType: "save" | "unlock" | "delete" | null;
+    targetNoteId: string | null;
+    cancelText?: string;
+  }>({
+    visible: false,
+    title: "",
+    amount: 0,
+    actionType: null,
+    targetNoteId: null,
+  });
+
+  const closePayment = () => setPaymentConfig(prev => ({ ...prev, visible: false }));
+
+  const handleSavePress = () => {
+    if (!currentText.trim()) return;
+    Keyboard.dismiss();
+    setPaymentConfig({
+      visible: true,
+      title: `Save Note? That will be ${formatCurrency(99)}.`,
+      amount: 99,
+      actionType: "save",
+      targetNoteId: null,
+      cancelText: "Discard (Free)"
+    });
+  };
+
+  const handleUnlockPress = (note: Note) => {
+    if (note.isUnlocked) {
+      setCurrentText(note.content);
+      return;
+    }
+    setPaymentConfig({
+      visible: true,
+      title: `Unlock Memory? ${formatCurrency(50)} admission fee.`,
+      amount: 50,
+      actionType: "unlock",
+      targetNoteId: note.id,
+      cancelText: "Keep Locked"
+    });
+  };
+
+  const handleDeletePress = (noteId: string) => {
+    setPaymentConfig({
+      visible: true,
+      title: `Erase History? ${formatCurrency(200)} Disposal Fee.`,
+      amount: 200,
+      actionType: "delete",
+      targetNoteId: noteId,
+      cancelText: "Keep Note"
+    });
+  };
+
+  const executePaymentAction = () => {
+    const { amount, actionType, targetNoteId } = paymentConfig;
+    
+    // Attempt to spend
+    const success = spend(amount, `Notepad: ${actionType}`);
+    
+    if (!success) {
+      Alert.alert("Insufficient Balance", "You don't have enough KC to perform this action. Top up your wallet!");
+      closePayment();
+      return;
+    }
+
+    // Process action
+    if (actionType === "save") {
+      const newNote: Note = {
+        id: Date.now().toString(),
+        title: currentText.split("\n")[0].substring(0, 20) || "Untitled",
+        content: currentText,
+        isUnlocked: true,
+      };
+      setNotes([newNote, ...notes]);
+      setCurrentText("");
+    } 
+    else if (actionType === "unlock" && targetNoteId) {
+      setNotes(notes.map(n => n.id === targetNoteId ? { ...n, isUnlocked: true } : n));
+      const unlockedNote = notes.find(n => n.id === targetNoteId);
+      if (unlockedNote) {
+        setCurrentText(unlockedNote.content);
+      }
+    } 
+    else if (actionType === "delete" && targetNoteId) {
+      setNotes(notes.filter(n => n.id !== targetNoteId));
+      setCurrentText("");
+    }
+    
+    closePayment();
+  };
+
   return (
-    <View className="flex-1 bg-zinc-950">
+    <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      
       {/* Header */}
-      <View className="flex-row items-center px-5 pt-14 pb-3">
+      <View className="flex-row items-center justify-between px-5 pt-14 pb-3 border-b border-zinc-900">
         <TouchableOpacity
           onPress={onBack}
           className="flex-row items-center gap-2 bg-zinc-900 px-4 py-2.5 rounded-xl border border-zinc-800"
@@ -18,51 +133,110 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
           <ArrowLeft color="#a1a1aa" size={18} />
           <Text className="text-zinc-400 font-semibold text-sm">Back</Text>
         </TouchableOpacity>
+
+        <FlexScoreWidget score={totalSpent} />
       </View>
 
-      {/* Placeholder Content */}
-      <View className="flex-1 items-center justify-center px-8">
-        <View className="w-28 h-28 bg-emerald-500/10 rounded-3xl items-center justify-center mb-8 border border-emerald-500/20">
-          <FileText color="#10b981" size={48} />
-        </View>
-
-        <Text className="text-white text-3xl font-bold text-center tracking-tight mb-3">
-          Smart Notepad
-        </Text>
-        <Text className="text-zinc-500 text-center text-base leading-6 mb-10 max-w-[320px]">
-          AI-powered note-taking with smart formatting, auto-tags, and cloud sync. Each save costs from your wallet.
-        </Text>
-
-        {/* Feature Preview */}
-        <View className="w-full max-w-[400px] gap-3">
-          <View className="flex-row items-center gap-3 bg-zinc-900 p-4 rounded-2xl border border-zinc-800/80">
-            <View className="w-10 h-10 bg-purple-500/15 rounded-xl items-center justify-center">
-              <Sparkles color="#a855f7" size={20} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-white font-semibold text-sm">AI Formatting</Text>
-              <Text className="text-zinc-500 text-xs mt-0.5">Auto-structure your notes</Text>
-            </View>
-            <Lock color="#52525b" size={16} />
-          </View>
-
-          <View className="flex-row items-center gap-3 bg-zinc-900 p-4 rounded-2xl border border-zinc-800/80">
-            <View className="w-10 h-10 bg-blue-500/15 rounded-xl items-center justify-center">
-              <Clock color="#3b82f6" size={20} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-white font-semibold text-sm">Version History</Text>
-              <Text className="text-zinc-500 text-xs mt-0.5">Track all your changes</Text>
-            </View>
-            <Lock color="#52525b" size={16} />
+      <View className="flex-1 flex-row">
+        {/* Main Editor */}
+        <View className="flex-1 p-5">
+          <TextInput
+            className="flex-1 text-white text-lg text-left"
+            placeholder="Start typing your premium thoughts..."
+            placeholderTextColor="#52525b"
+            multiline
+            textAlignVertical="top"
+            value={currentText}
+            onChangeText={setCurrentText}
+          />
+          
+          <View className="flex-row items-center justify-between mt-4 pt-4 border-t border-zinc-900">
+            <Text className="text-zinc-500 text-xs font-medium">
+              {currentText.length} characters
+            </Text>
+            
+            <TouchableOpacity
+              onPress={handleSavePress}
+              className={`flex-row items-center gap-2 px-6 py-3 rounded-full ${
+                currentText.trim() ? "bg-amber-500" : "bg-zinc-800"
+              }`}
+              disabled={!currentText.trim()}
+            >
+              <Save color={currentText.trim() ? "#000" : "#52525b"} size={18} />
+              <Text className={`font-bold ${currentText.trim() ? "text-black" : "text-zinc-500"}`}>
+                Save Note
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Coming Soon Badge */}
-        <View className="mt-10 bg-amber-500/10 px-6 py-3 rounded-full border border-amber-500/20">
-          <Text className="text-amber-400 font-bold text-sm tracking-wider uppercase">Coming Soon</Text>
-        </View>
+        {/* Sidebar / Notes List */}
+        {notes.length > 0 && (
+          <View className="w-1/3 border-l border-zinc-900 bg-zinc-950/50 p-4">
+            <Text className="text-zinc-400 font-bold text-xs uppercase tracking-wider mb-4">Saved History</Text>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {notes.map(note => (
+                <View key={note.id} className="bg-zinc-900 rounded-2xl mb-3 border border-zinc-800 overflow-hidden">
+                  <TouchableOpacity
+                    onPress={() => handleUnlockPress(note)}
+                    className="p-4"
+                  >
+                    <View className="flex-row items-center gap-2 mb-2">
+                      <FileText color="#3b82f6" size={16} />
+                      <Text className="text-zinc-200 font-bold text-sm flex-1" numberOfLines={1}>
+                        {note.title}
+                      </Text>
+                      {!note.isUnlocked && <Lock color="#f59e0b" size={14} />}
+                    </View>
+                    
+                    <View className="relative">
+                      <Text 
+                        className={`text-xs ${note.isUnlocked ? "text-zinc-400" : "text-transparent"}`}
+                        numberOfLines={3}
+                      >
+                        {note.isUnlocked ? note.content : "Blurred content hidden..."}
+                      </Text>
+                      
+                      {!note.isUnlocked && (
+                        <View className="absolute inset-0 bg-zinc-900/80 items-center justify-center rounded">
+                          <Text className="text-amber-500 text-[10px] font-bold uppercase tracking-wider">
+                            Locked Memory
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                  
+                  {/* Delete Button */}
+                  <View className="border-t border-zinc-800 flex-row justify-end p-2 bg-zinc-950/50">
+                    <TouchableOpacity 
+                      onPress={() => handleDeletePress(note.id)}
+                      className="p-2"
+                    >
+                      <Trash2 color="#ef4444" size={16} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
       </View>
-    </View>
+
+      <PaymentModal
+        visible={paymentConfig.visible}
+        title={paymentConfig.title}
+        amount={paymentConfig.amount}
+        cancelText={paymentConfig.cancelText}
+        onPay={executePaymentAction}
+        onCancel={() => {
+          if (paymentConfig.actionType === "save") {
+            // "Discard (Free)" mechanic
+            setCurrentText("");
+          }
+          closePayment();
+        }}
+      />
+    </KeyboardAvoidingView>
   );
 }
