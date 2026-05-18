@@ -15,15 +15,17 @@ import { useAuth } from "../contexts/AuthContext";
 import { formatCurrency } from "../utils/currency";
 import { AdBanner } from "../components/AdBanner";
 import PaymentModal from "../components/PaymentModal";
+import type { LegalDocType } from "./LegalScreen";
 
 interface WalletScreenProps {
   onBack: () => void;
+  onNavigateToLegal?: (type: LegalDocType) => void;
 }
 
 const PRESET_AMOUNTS = [100, 500, 1000, 3000, 5000, 8000, 10000];
 const PAGE_SIZE = 5;
 
-export default function WalletScreen({ onBack }: WalletScreenProps) {
+export default function WalletScreen({ onBack, onNavigateToLegal }: WalletScreenProps) {
   const { balance, totalSpent, transactions, topup } = useWallet();
   const { user } = useAuth();
   const theme = user?.activeTheme || "dark";
@@ -242,16 +244,31 @@ export default function WalletScreen({ onBack }: WalletScreenProps) {
           {/* TnC Box */}
           <View className="px-5 py-4">
             <View className={`${isLight ? "bg-white" : "bg-zinc-900/50"} p-4 rounded-2xl border ${isLight ? "border-zinc-200" : "border-zinc-800/50"}`}>
-              <View className="flex-row items-center gap-2 mb-2">
-                <Info color="#a1a1aa" size={16} />
-                <Text className={`${isLight ? "text-zinc-700" : "text-zinc-300"} font-bold text-sm`}>Terms & Conditions</Text>
+              <View className="flex-row items-center justify-between mb-2">
+                <View className="flex-row items-center gap-2">
+                  <Info color="#a1a1aa" size={16} />
+                  <Text className={`${isLight ? "text-zinc-700" : "text-zinc-300"} font-bold text-sm`}>Important Information</Text>
+                </View>
               </View>
               <Text className="text-zinc-500 text-xs leading-5">
                 • Ka-Chings (KC) are a virtual utility token and have no real-world monetary value.{'\n'}
                 • All purchases are strictly non-refundable and non-redeemable outside of this app.{'\n'}
-                • Your account tier automatically upgrades based on your total cumulative spend.{'\n'}
                 • Multipliers: Custom purchases over ₹10,000 grant a 1.2x bonus. Purchases over ₹50,000 grant a 2.0x bonus.
               </Text>
+              <View className={`mt-3 pt-3 border-t ${isLight ? "border-zinc-200" : "border-zinc-800/50"} flex-row flex-wrap gap-x-3 gap-y-2`}>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("tnc")}>
+                  <Text className={`${isLight ? "text-blue-500" : "text-blue-400"} text-xs font-medium underline`}>Terms & Conditions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("privacy")}>
+                  <Text className={`${isLight ? "text-blue-500" : "text-blue-400"} text-xs font-medium underline`}>Privacy Policy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("refund")}>
+                  <Text className={`${isLight ? "text-blue-500" : "text-blue-400"} text-xs font-medium underline`}>Cancellation & Refund</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("shipping")}>
+                  <Text className={`${isLight ? "text-blue-500" : "text-blue-400"} text-xs font-medium underline`}>Shipping & Delivery</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 

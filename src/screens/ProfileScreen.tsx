@@ -38,6 +38,7 @@ import { AdBanner } from "../components/AdBanner";
 import { UserAvatar, AVATAR_KEYS } from "../components/UserAvatar";
 import PaymentModal from "../components/PaymentModal";
 import { generateAppUniqueId } from "../utils/ids";
+import type { LegalDocType } from "./LegalScreen";
 
 const USERNAME_CHANGE_COST = 500;
 const AD_REMOVAL_COST = 500;
@@ -45,9 +46,10 @@ const AD_REMOVAL_COST = 500;
 interface ProfileScreenProps {
   onNavigateToStore?: () => void;
   onNavigateToZestyAuth?: () => void;
+  onNavigateToLegal?: (type: LegalDocType) => void;
 }
 
-export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth }: ProfileScreenProps) {
+export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth, onNavigateToLegal }: ProfileScreenProps) {
   const { user, isGuest, isLoggedIn, logout, promptLogin } = useAuth();
   const theme = user?.activeTheme || "dark";
   const isLight = theme === "light";
@@ -138,7 +140,7 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
 
   // ─── Username availability checker ──────────────────────────────────
   const checkUsernameAvailability = async (name: string) => {
-    if (!name || name.length < 3) {
+    if (!name || name.length < 5 || name.length > 15) {
       setIsUsernameAvailable(null);
       return;
     }
@@ -166,10 +168,16 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
   // ─── Username change (CHARGED 500 KC) ───────────────────────────────
   const handleUsernameSave = () => {
     const trimmed = editUsername.trim();
-    if (trimmed.length < 3) {
-      Alert.alert("Invalid Username", "Username must be at least 3 characters.");
+    
+    const usernameRegex = /^[a-z0-9_]{5,15}$/;
+    if (!usernameRegex.test(trimmed)) {
+      Alert.alert(
+        "Invalid Username",
+        "Username must be between 5 and 15 characters, and can only contain lowercase letters, numbers, and underscores (no spaces)."
+      );
       return;
     }
+
     if (isUsernameAvailable === false) {
       Alert.alert("Username Taken", "This username is already in use.");
       return;
@@ -589,8 +597,29 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
               </TouchableOpacity>
             )}
 
+            {/* Legal Documents */}
+            <View className="mt-8 mb-2">
+              <View className="flex-row flex-wrap justify-center gap-x-4 gap-y-3">
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("tnc")}>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs font-medium`}>Terms & Conditions</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("privacy")}>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs font-medium`}>Privacy Policy</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("refund")}>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs font-medium`}>Cancellation/Refund</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("shipping")}>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs font-medium`}>Shipping/Delivery</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onNavigateToLegal?.("contact")}>
+                  <Text className={`${isLight ? "text-zinc-500" : "text-zinc-500"} text-xs font-medium`}>Contact Us</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             {/* App Info */}
-            <View className="items-center mt-8">
+            <View className="items-center mt-6">
               <Text className={`${isLight ? "text-zinc-500" : "text-zinc-700"} text-xs`}>Balance Unlimited v1.0.0</Text>
               <Text className={`${isLight ? "text-zinc-400" : "text-zinc-800"} text-xs mt-1`}>{user?.tier || "YaBasic"}™ Tier</Text>
             </View>

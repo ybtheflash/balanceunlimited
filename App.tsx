@@ -21,6 +21,7 @@ import LeaderboardScreen from "./src/screens/LeaderboardScreen";
 import WalletScreen from "./src/screens/WalletScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
 import ZestyAuthScreen from "./src/screens/ZestyAuthScreen";
+import LegalScreen, { LegalDocType } from "./src/screens/LegalScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -28,6 +29,7 @@ const Tab = createBottomTabNavigator();
 function TabNavigator() {
   const { isLoggedIn, user } = useAuth();
   const [activeScreen, setActiveScreen] = useState<string | null>(null);
+  const [activeLegalDoc, setActiveLegalDoc] = useState<LegalDocType>("tnc");
 
   const navigation = useNavigation<any>();
 
@@ -69,10 +71,21 @@ function TabNavigator() {
     return <NotepadScreen onBack={handleBack} />;
   }
   if (activeScreen === "Wallet") {
-    return <WalletScreen onBack={handleBack} />;
+    return (
+      <WalletScreen 
+        onBack={handleBack} 
+        onNavigateToLegal={(type: LegalDocType) => {
+          setActiveLegalDoc(type);
+          setActiveScreen("Legal");
+        }} 
+      />
+    );
   }
   if (activeScreen === "ZestyAuth") {
     return <ZestyAuthScreen onBack={handleBack} />;
+  }
+  if (activeScreen === "Legal") {
+    return <LegalScreen docType={activeLegalDoc} onBack={handleBack} />;
   }
 
   return (
@@ -129,7 +142,15 @@ function TabNavigator() {
           tabBarButton: isLoggedIn ? undefined : () => null,
         }}
       >
-        {() => <TabWrapper><WalletScreen onBack={() => navigation.navigate("HomeTab")} /></TabWrapper>}
+        {() => <TabWrapper>
+          <WalletScreen 
+            onBack={() => navigation.navigate("HomeTab")} 
+            onNavigateToLegal={(type: LegalDocType) => {
+              setActiveLegalDoc(type);
+              setActiveScreen("Legal");
+            }} 
+          />
+        </TabWrapper>}
       </Tab.Screen>
 
       <Tab.Screen
@@ -143,6 +164,10 @@ function TabNavigator() {
           <ProfileScreen
             onNavigateToStore={() => setActiveScreen("Wallet")}
             onNavigateToZestyAuth={() => setActiveScreen("ZestyAuth")}
+            onNavigateToLegal={(type: LegalDocType) => {
+              setActiveLegalDoc(type);
+              setActiveScreen("Legal");
+            }}
           />
         </TabWrapper>}
       </Tab.Screen>

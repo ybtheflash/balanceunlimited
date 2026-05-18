@@ -63,7 +63,7 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
   }, []);
 
   const checkUsernameAvailability = async (name: string) => {
-    if (!name || name.length < 3) {
+    if (!name || name.length < 5 || name.length > 15) {
       setIsUsernameAvailable(null);
       return;
     }
@@ -79,10 +79,11 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
   };
 
   const handleUsernameChange = (text: string) => {
-    setUsername(text);
+    const cleanedText = text.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    setUsername(cleanedText);
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
     debounceTimer.current = setTimeout(() => {
-      checkUsernameAvailability(text);
+      checkUsernameAvailability(cleanedText);
     }, 500);
   };
 
@@ -91,7 +92,16 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
       Alert.alert("Missing Fields", "Please enter your username, email, and password.");
       return;
     }
-    
+
+    const usernameRegex = /^[a-z0-9_]{5,15}$/;
+    if (!usernameRegex.test(username)) {
+      Alert.alert(
+        "Invalid Username",
+        "Username must be between 5 and 15 characters, and can only contain lowercase letters, numbers, and underscores (no spaces)."
+      );
+      return;
+    }
+
     if (password.length < 6) {
       Alert.alert("Password Too Short", "Your password must be at least 6 characters.");
       return;
