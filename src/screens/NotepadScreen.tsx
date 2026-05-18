@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { 
   View, Text, TextInput, TouchableOpacity, ScrollView, 
   Alert, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions
@@ -56,6 +56,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
     visible: boolean;
     title: string;
     amount: number;
+    amountString: string;
     actionType: "save" | "unlock" | "delete" | null;
     targetNoteId: string | null;
     cancelText?: string;
@@ -63,6 +64,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
     visible: false,
     title: "",
     amount: 0,
+    amountString: "",
     actionType: null,
     targetNoteId: null,
   });
@@ -74,8 +76,9 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
     Keyboard.dismiss();
     setPaymentConfig({
       visible: true,
-      title: `Save Note? That will be ${formatCurrency(99)}.`,
+      title: `Save Note? That will be 99 KC.`,
       amount: 99,
+      amountString: `💰 99 KC`,
       actionType: "save",
       targetNoteId: null,
       cancelText: "Discard (Free)"
@@ -90,8 +93,9 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
     }
     setPaymentConfig({
       visible: true,
-      title: `Unlock Memory? ${formatCurrency(50)} admission fee.`,
+      title: `Unlock Memory? 50 KC admission fee.`,
       amount: 50,
+      amountString: `💰 50 KC`,
       actionType: "unlock",
       targetNoteId: note.id,
       cancelText: "Keep Locked"
@@ -101,8 +105,9 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
   const handleDeletePress = (noteId: string) => {
     setPaymentConfig({
       visible: true,
-      title: `Erase History? ${formatCurrency(200)} Disposal Fee.`,
+      title: `Erase History? 200 KC Disposal Fee.`,
       amount: 200,
+      amountString: `💰 200 KC`,
       actionType: "delete",
       targetNoteId: noteId,
       cancelText: "Keep Note"
@@ -422,6 +427,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
         visible={paymentConfig.visible}
         title={paymentConfig.title}
         amount={paymentConfig.amount}
+        amountString={paymentConfig.amountString}
         cancelText={paymentConfig.cancelText}
         onPay={executePaymentAction}
         onCancel={() => {

@@ -1,10 +1,9 @@
 import "./global.css";
-import React, { useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { StatusBar } from "expo-status-bar";
 import { NavigationContainer } from "@react-navigation/native";
-import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { View, Text, Platform } from "react-native";
+import { Platform } from "react-native";
 import { Home, Trophy, Wallet, User } from "lucide-react-native";
 
 import { AuthProvider, useAuth } from "./src/contexts/AuthContext";
@@ -18,8 +17,8 @@ import NotepadScreen from "./src/screens/NotepadScreen";
 import LeaderboardScreen from "./src/screens/LeaderboardScreen";
 import WalletScreen from "./src/screens/WalletScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
+import ZestyAuthScreen from "./src/screens/ZestyAuthScreen";
 
-const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 // ─── Tab Navigator ─────────────────────────────────────────────────────────────
@@ -27,7 +26,6 @@ function TabNavigator() {
   const { isLoggedIn } = useAuth();
   const [activeScreen, setActiveScreen] = useState<string | null>(null);
 
-  // Stack-like navigation within tabs
   const handleNavigate = useCallback((screen: string) => {
     setActiveScreen(screen);
   }, []);
@@ -36,7 +34,7 @@ function TabNavigator() {
     setActiveScreen(null);
   }, []);
 
-  // If a utility screen is active, render it full-screen instead of tabs
+  // Stack-like sub-screens
   if (activeScreen === "Calculator") {
     return <CalculatorScreen onBack={handleBack} onOpenWallet={() => setActiveScreen("Wallet")} />;
   }
@@ -45,6 +43,9 @@ function TabNavigator() {
   }
   if (activeScreen === "Wallet") {
     return <WalletScreen onBack={handleBack} />;
+  }
+  if (activeScreen === "ZestyAuth") {
+    return <ZestyAuthScreen onBack={handleBack} />;
   }
 
   return (
@@ -105,12 +106,18 @@ function TabNavigator() {
 
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileScreen}
         options={{
           tabBarLabel: "Profile",
           tabBarIcon: ({ color, size }) => <User color={color} size={size - 2} />,
         }}
-      />
+      >
+        {() => (
+          <ProfileScreen
+            onNavigateToStore={() => setActiveScreen("Wallet")}
+            onNavigateToZestyAuth={() => setActiveScreen("ZestyAuth")}
+          />
+        )}
+      </Tab.Screen>
     </Tab.Navigator>
   );
 }
@@ -124,7 +131,7 @@ function AppContent() {
     return <SplashScreen onFinish={() => setShowSplash(false)} />;
   }
 
-  // Not logged in and not guest → show login
+  // Not logged in and not guest → show login (handles 2FA flow internally)
   if (!isLoggedIn && !isGuest) {
     return <LoginScreen onGuestContinue={() => { }} />;
   }

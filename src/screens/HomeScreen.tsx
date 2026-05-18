@@ -1,4 +1,3 @@
-import React from "react";
 import { View, Text, TouchableOpacity, ScrollView, Alert, useWindowDimensions } from "react-native";
 import { Calculator, FileText, Lock, Zap, Wallet, ChevronRight, Crown } from "lucide-react-native";
 import { useAuth } from "../contexts/AuthContext";
@@ -27,7 +26,7 @@ const UTILITIES: Utility[] = [
     iconColor: "#3b82f6",
     bgColor: "bg-blue-500/10",
     borderColor: "border-blue-500/20",
-    costPerUse: 5,
+    costPerUse: 10,
     route: "Calculator",
   },
   {

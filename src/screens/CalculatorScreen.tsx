@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,11 @@ import {
   Alert,
   useWindowDimensions,
 } from "react-native";
-import { ArrowLeft, Delete, Lock, Unlock, RotateCcw } from "lucide-react-native";
+import { ArrowLeft, Delete, Lock, Unlock } from "lucide-react-native";
 import { useWallet } from "../contexts/WalletContext";
 import { formatCurrency } from "../utils/currency";
 
-const COST_PER_RESULT = 5; // KC
+const COST_PER_RESULT = 10;
 
 interface CalculatorScreenProps {
   onBack: () => void;
@@ -54,7 +54,6 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
         const evalExpr = expression
           .replace(/×/g, "*")
           .replace(/÷/g, "/");
-        // eslint-disable-next-line no-eval
         const evalResult = Function('"use strict"; return (' + evalExpr + ")")();
         setResult(String(evalResult));
         setIsResultLocked(true);
@@ -73,23 +72,23 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
   const handleUnlockResult = () => {
     if (!canAfford(COST_PER_RESULT)) {
       Alert.alert(
-        "Insufficient Balance",
-        `You need ${formatCurrency(COST_PER_RESULT)} to unlock this result. Current balance: ${formatCurrency(balance)}`,
+        "💰 Insufficient Balance",
+        `You need ${formatCurrency(COST_PER_RESULT)} to unlock this result.\n\nYour balance: ${formatCurrency(balance)}\n\nPlease top up your wallet.`,
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Top Up Wallet", onPress: onOpenWallet },
+          { text: "🏪 Go to Store", onPress: onOpenWallet },
         ]
       );
       return;
     }
 
     Alert.alert(
-      "Unlock Result",
-      `This will cost ${formatCurrency(COST_PER_RESULT)} from your wallet.\n\nBalance: ${formatCurrency(balance)} → ${formatCurrency(balance - COST_PER_RESULT)}`,
+      "🔓 Unlock Result",
+      `Cost: ${formatCurrency(COST_PER_RESULT)}\n\nBalance: ${formatCurrency(balance)} → ${formatCurrency(balance - COST_PER_RESULT)}\n\n⚠️ Non-refundable.`,
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Pay & Unlock",
+          text: `💰 Pay ${COST_PER_RESULT} KC`,
           onPress: () => {
             const success = spend(COST_PER_RESULT, "Calculator Result Unlock");
             if (success) {
@@ -127,9 +126,9 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
             <ArrowLeft color="#a1a1aa" size={18} />
             <Text className="text-zinc-400 font-semibold text-sm">Back</Text>
           </TouchableOpacity>
-          <View className="flex-row items-center gap-2 bg-zinc-900 px-4 py-2.5 rounded-xl border border-zinc-800">
-            <Text className="text-zinc-500 text-xs">BAL:</Text>
-            <Text className="text-emerald-400 font-bold text-sm">{formatCurrency(balance)}</Text>
+          <View className="flex-row items-center gap-1.5 bg-zinc-900 px-4 py-2.5 rounded-xl border border-zinc-800">
+            <Text className="text-sm">💰</Text>
+            <Text className="text-emerald-400 font-bold text-sm">{balance} KC</Text>
           </View>
         </View>
 
@@ -137,7 +136,6 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
           {/* Display */}
           <View className="px-5 mb-6">
             <View className="bg-zinc-900 rounded-3xl p-6 border border-zinc-800/80 min-h-[160px] justify-end">
-              {/* Expression */}
               <Text
                 className="text-zinc-400 text-right text-xl mb-2"
                 numberOfLines={2}
@@ -146,7 +144,6 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
                 {expression || "0"}
               </Text>
 
-              {/* Result */}
               {result !== null && (
                 <View className="items-end">
                   {result === "Error" ? (
@@ -161,7 +158,7 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
                       <View>
                         <Text className="text-blue-400 font-bold text-base">Unlock Result</Text>
                         <Text className="text-blue-500/60 text-xs mt-0.5">
-                          Pay {formatCurrency(COST_PER_RESULT)} to reveal
+                          💰 {COST_PER_RESULT} KC to reveal
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -208,9 +205,9 @@ export default function CalculatorScreen({ onBack, onOpenWallet }: CalculatorScr
         {/* Cost Indicator */}
         <View className="bg-zinc-900/95 border-t border-zinc-800 py-3 px-5">
           <View className="flex-row items-center justify-center gap-2">
-            <Lock color="#f59e0b" size={12} />
+            <Text className="text-sm">🔒</Text>
             <Text className="text-amber-500/80 text-xs font-semibold tracking-wide">
-              Each result costs {formatCurrency(COST_PER_RESULT)}
+              Each result costs 💰 {COST_PER_RESULT} KC • Non-refundable
             </Text>
           </View>
         </View>

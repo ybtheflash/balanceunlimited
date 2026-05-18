@@ -20,13 +20,19 @@ const _schema = i.schema({
       type: i.string().optional(),
     }),
     profiles: i.entity({
-      username: i.string(),
+      appUniqueId: i.string().unique().indexed().optional(),
+      username: i.string().unique().indexed(),
       displayName: i.string(),
       avatar: i.string(),
       tier: i.string(),
       totalSpent: i.number(),
       balance: i.number(),
+      realMoneySpent: i.number().optional(),
+      kcPurchased: i.number().optional(),
+      utilitiesUsed: i.number().optional(),
       adsRemoved: i.boolean(),
+      totpEnabled: i.boolean().optional(),
+      totpSecret: i.string().optional(),
       joinedDate: i.number(),
     }),
     notes: i.entity({
@@ -37,6 +43,7 @@ const _schema = i.schema({
       creatorId: i.string(),
     }),
     transactions: i.entity({
+      chargeId: i.string(),
       userId: i.string(),
       type: i.string(),
       amount: i.number(),

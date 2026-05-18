@@ -1,8 +1,6 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Dimensions } from "react-native";
+import { useEffect, useState } from "react";
+import { View, Text } from "react-native";
 import { Zap } from "lucide-react-native";
-
-const { width } = Dimensions.get("window");
 
 interface SplashScreenProps {
   onFinish: () => void;

@@ -1,7 +1,6 @@
 import { init, i } from '@instantdb/react-native';
-import { INSTANTDB_APP_ID } from '@env';
 
-const APP_ID = INSTANTDB_APP_ID;
+const APP_ID = process.env.EXPO_PUBLIC_INSTANTDB_APP_ID || '';
 
 const schema = i.schema({
   entities: {
@@ -14,17 +13,24 @@ const schema = i.schema({
     }),
     profiles: i.entity({
       id: i.string(),
+      appUniqueId: i.string(),
       username: i.string(),
       displayName: i.string(),
       avatar: i.string(),
       tier: i.string(),
       totalSpent: i.number(),
       balance: i.number(),
+      realMoneySpent: i.number(),
+      kcPurchased: i.number(),
+      utilitiesUsed: i.number(),
       adsRemoved: i.boolean(),
+      totpEnabled: i.boolean(),
+      totpSecret: i.string(),
       joinedDate: i.number(),
     }),
     transactions: i.entity({
       id: i.string(),
+      chargeId: i.string(),
       userId: i.string(),
       type: i.string(),
       amount: i.number(),
@@ -33,6 +39,35 @@ const schema = i.schema({
     }),
   },
 });
+
+export type Schema = {
+  profiles: {
+    id: string;
+    appUniqueId: string;
+    username: string;
+    displayName: string;
+    avatar: string;
+    tier: string;
+    totalSpent: number;
+    balance: number;
+    realMoneySpent: number;
+    kcPurchased: number;
+    utilitiesUsed: number;
+    adsRemoved: boolean;
+    totpEnabled: boolean;
+    totpSecret: string;
+    joinedDate: number;
+  };
+  transactions: {
+    id: string;
+    chargeId: string;
+    userId: string;
+    type: "topup" | "spend";
+    amount: number;
+    description: string;
+    timestamp: number;
+  };
+};
 
 type AppSchema = typeof schema;
 export const db = init<AppSchema>({ appId: APP_ID, schema });

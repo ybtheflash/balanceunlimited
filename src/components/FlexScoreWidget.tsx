@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useRef } from "react";
-import { View, Text, Animated } from "react-native";
+import { useEffect, useState, useRef } from "react";
+import { Text, Animated } from "react-native";
 import { Crown } from "lucide-react-native";
 import { formatCurrency } from "../utils/currency";
 

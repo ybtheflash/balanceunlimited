@@ -1,9 +1,7 @@
-import React from "react";
 import {
   View,
   Text,
   FlatList,
-  useWindowDimensions,
   ActivityIndicator,
 } from "react-native";
 import { Trophy, TrendingUp, Users } from "lucide-react-native";
@@ -11,9 +9,9 @@ import { db } from "../db/instant";
 import { formatCurrency } from "../utils/currency";
 import { useAuth } from "../contexts/AuthContext";
 import { AdBanner } from "../components/AdBanner";
+import { UserAvatar } from "../components/UserAvatar";
 
 export default function LeaderboardScreen() {
-  const { width } = useWindowDimensions();
   const { user } = useAuth();
 
   // Fetch all profiles + all transactions from Instant DB
@@ -99,15 +97,8 @@ export default function LeaderboardScreen() {
           </View>
 
           {/* Avatar */}
-          <View
-            className="w-10 h-10 rounded-full items-center justify-center mr-3"
-            style={{
-              backgroundColor: medalColor ? `${medalColor}20` : "#27272a",
-              borderWidth: medalColor ? 1 : 0,
-              borderColor: medalColor ? `${medalColor}40` : "transparent",
-            }}
-          >
-            <Text className="text-lg">{item.avatar || "🧑‍💻"}</Text>
+          <View className="mr-3">
+            <UserAvatar avatarKey={item.avatar || "default"} size={40} />
           </View>
 
           {/* Info */}

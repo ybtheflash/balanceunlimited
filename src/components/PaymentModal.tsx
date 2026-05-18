@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, Modal, TouchableOpacity, ActivityIndicator } from "react-native";
 import { CreditCard, Fingerprint, Lock, ShieldCheck } from "lucide-react-native";
 import { formatCurrency } from "../utils/currency";
@@ -7,6 +7,7 @@ interface PaymentModalProps {
   visible: boolean;
   title: string;
   amount: number; // in cents or whole numbers, we'll format as $X.XX
+  amountString?: string; // override formatting
   onPay: () => void;
   onCancel: () => void;
   cancelText?: string;
@@ -19,6 +20,7 @@ export default function PaymentModal({
   onPay,
   onCancel,
   cancelText = "Cancel",
+  amountString,
 }: PaymentModalProps) {
   const [processing, setProcessing] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -67,7 +69,7 @@ export default function PaymentModal({
                 Amount Due
               </Text>
               <Text className="text-white text-4xl font-black tracking-tighter">
-                {formatCurrency(amount)}
+                {amountString ? amountString : formatCurrency(amount)}
               </Text>
             </View>
           </View>

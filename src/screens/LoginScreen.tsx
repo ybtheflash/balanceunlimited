@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -10,9 +10,10 @@ import {
   ScrollView,
   Alert,
 } from "react-native";
-import { Zap, Mail, KeyRound, User, ArrowRight, Shield, ShieldCheck, CheckCircle2, XCircle } from "lucide-react-native";
+import { Zap, Mail, KeyRound, User, ArrowRight, Shield, ShieldCheck, CheckCircle2, XCircle, Key } from "lucide-react-native";
 import { useAuth } from "../contexts/AuthContext";
 import { db } from "../db/instant";
+import { verifyTotpToken } from "../utils/zestyauth";
 
 interface LoginScreenProps {
   onGuestContinue: () => void;
@@ -32,7 +33,7 @@ const CAPTCHAS = [
 ];
 
 export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
-  const { sendMagicCode, verifyCode, continueAsGuest } = useAuth();
+  const { sendMagicCode, verifyCode, continueAsGuest, pending2FA, complete2FALogin } = useAuth();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +42,10 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
   // OTP state
   const [code, setCode] = useState("");
   const [codeSent, setCodeSent] = useState(false);
+  
+  // 2FA state
+  const [twoFACode, setTwoFACode] = useState("");
+  const [twoFALoading, setTwoFALoading] = useState(false);
   
   // Captcha state
   const [captchaIndex, setCaptchaIndex] = useState(0);
@@ -54,7 +59,6 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Pick random captcha on mount
     setCaptchaIndex(Math.floor(Math.random() * CAPTCHAS.length));
   }, []);
 
@@ -124,10 +128,54 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
     setLoading(true);
     try {
       await verifyCode(email, code, username);
+      // If 2FA is needed, the pending2FA state will be set by AuthContext
+      // and we'll show the 2FA screen via the render below
     } catch (err: any) {
       Alert.alert("Error", err.message || "Invalid OTP code.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleVerify2FA = async () => {
+    if (!twoFACode || twoFACode.length < 6) {
+      Alert.alert("Invalid Code", "Please enter the 6-digit code from your authenticator app.");
+      return;
+    }
+
+    setTwoFALoading(true);
+    
+    // Look up the user's TOTP secret from DB
+    try {
+      const res = await db.queryOnce({ profiles: { $: { where: { username: pending2FA?.username || "" } } } });
+      let profile = res.data.profiles[0] as any;
+      
+      // If not found by username, try email-based lookup via auth user
+      if (!profile) {
+        // The user is authenticated at this point, just blocked by 2FA
+        // Since we may not have a direct email field, use the username
+        Alert.alert("Error", "Could not verify 2FA. Please try again or contact support@zestyahh.com");
+        setTwoFALoading(false);
+        return;
+      }
+
+      const secret = profile.totpSecret;
+      if (!secret) {
+        Alert.alert("Error", "2FA secret not found. Contact support@zestyahh.com");
+        setTwoFALoading(false);
+        return;
+      }
+
+      const isValid = verifyTotpToken(twoFACode, secret);
+      if (isValid) {
+        complete2FALogin();
+      } else {
+        Alert.alert("Invalid Code", "The code is incorrect. Please try again.\n\nIf you've lost access to your authenticator, contact support@zestyahh.com");
+      }
+    } catch {
+      Alert.alert("Error", "Verification failed. Contact support@zestyahh.com");
+    } finally {
+      setTwoFALoading(false);
     }
   };
 
@@ -136,6 +184,75 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
     onGuestContinue();
   };
 
+  // ──────────── 2FA Verification Screen ────────────
+  if (pending2FA) {
+    return (
+      <KeyboardAvoidingView
+        className="flex-1 bg-zinc-950 items-center"
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <View className="w-full max-w-lg flex-1">
+          <ScrollView
+            className="flex-1 w-full"
+            contentContainerStyle={{ flexGrow: 1, justifyContent: "center" }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="px-8 py-10 w-full">
+              <View className="items-center mb-8">
+                <View className="w-16 h-16 bg-blue-500/10 rounded-2xl items-center justify-center mb-4 border border-blue-500/20">
+                  <ShieldCheck color="#3b82f6" size={32} />
+                </View>
+                <Text className="text-white text-2xl font-black tracking-tight text-center">ZestyAuth</Text>
+                <Text className="text-zinc-500 text-xs mt-2 uppercase tracking-widest font-bold">
+                  Two-Factor Verification
+                </Text>
+                <Text className="text-zinc-400 text-center text-sm mt-4 leading-5 px-4">
+                  Enter the 6-digit code from your authenticator app to complete login.
+                </Text>
+              </View>
+
+              <View className="flex-row items-center bg-zinc-900/80 rounded-2xl px-4 py-4 border border-zinc-800">
+                <Key color="#3b82f6" size={20} />
+                <TextInput
+                  className="flex-1 text-white ml-3 text-xl font-bold tracking-[0.3em] text-center"
+                  placeholder="000000"
+                  placeholderTextColor="#52525b"
+                  value={twoFACode}
+                  onChangeText={(v) => setTwoFACode(v.replace(/[^0-9]/g, ""))}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  autoFocus
+                />
+              </View>
+
+              <TouchableOpacity
+                className="bg-blue-600 py-4 rounded-2xl items-center mt-4"
+                onPress={handleVerify2FA}
+                disabled={twoFALoading}
+                activeOpacity={0.8}
+              >
+                {twoFALoading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text className="text-white font-bold text-base uppercase tracking-wide">Verify 2FA</Text>
+                )}
+              </TouchableOpacity>
+
+              <View className="items-center mt-8">
+                <Text className="text-zinc-600 text-xs text-center leading-5">
+                  Lost access to your authenticator?{'\n'}
+                  Contact <Text className="text-blue-400/70 font-medium" selectable>support@zestyahh.com</Text>
+                </Text>
+              </View>
+            </View>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+
+  // ──────────── Normal Login Flow ────────────
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-zinc-950 items-center"
@@ -324,6 +441,13 @@ export default function LoginScreen({ onGuestContinue }: LoginScreenProps) {
                   </TouchableOpacity>
                 </>
               )}
+
+              {/* Support Email */}
+              <View className="items-center mt-6">
+                <Text className="text-zinc-700 text-[10px]">
+                  Need help? <Text className="text-blue-400/50 font-medium" selectable>support@zestyahh.com</Text>
+                </Text>
+              </View>
             </View>
           </View>
         </ScrollView>
