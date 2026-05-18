@@ -1,27 +1,38 @@
-import { init } from '@instantdb/react-native';
+import { init, i } from '@instantdb/react-native';
+import { INSTANTDB_APP_ID } from '@env';
 
-const APP_ID = '58f51910-2355-4114-8d43-f9076fd4a2d1';
+const APP_ID = INSTANTDB_APP_ID;
 
-export type Schema = {
-  profiles: {
-    id: string; // The user id from auth
-    username: string;
-    displayName: string;
-    avatar: string;
-    tier: string;
-    totalSpent: number;
-    balance: number;
-    adsRemoved: boolean;
-    joinedDate: number;
-  };
-  transactions: {
-    id: string;
-    userId: string;
-    type: "topup" | "spend";
-    amount: number;
-    description: string;
-    timestamp: number;
-  };
-};
+const schema = i.schema({
+  entities: {
+    notes: i.entity({
+      title: i.string(),
+      content: i.string(),
+      isUnlocked: i.boolean(),
+      createdAt: i.number(),
+      creatorId: i.string(),
+    }),
+    profiles: i.entity({
+      id: i.string(),
+      username: i.string(),
+      displayName: i.string(),
+      avatar: i.string(),
+      tier: i.string(),
+      totalSpent: i.number(),
+      balance: i.number(),
+      adsRemoved: i.boolean(),
+      joinedDate: i.number(),
+    }),
+    transactions: i.entity({
+      id: i.string(),
+      userId: i.string(),
+      type: i.string(),
+      amount: i.number(),
+      description: i.string(),
+      timestamp: i.number(),
+    }),
+  },
+});
 
-export const db = init({ appId: '58f51910-2355-4114-8d43-f9076fd4a2d1' });
+type AppSchema = typeof schema;
+export const db = init<AppSchema>({ appId: APP_ID, schema });

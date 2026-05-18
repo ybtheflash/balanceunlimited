@@ -29,6 +29,13 @@ const _schema = i.schema({
       adsRemoved: i.boolean(),
       joinedDate: i.number(),
     }),
+    notes: i.entity({
+      title: i.string(),
+      content: i.string(),
+      isUnlocked: i.boolean(),
+      createdAt: i.number(),
+      creatorId: i.string(),
+    }),
     transactions: i.entity({
       userId: i.string(),
       type: i.string(),
@@ -38,6 +45,18 @@ const _schema = i.schema({
     }),
   },
   links: {
+    profileNotes: {
+      forward: {
+        on: "profiles",
+        has: "many",
+        label: "notes",
+      },
+      reverse: {
+        on: "notes",
+        has: "one",
+        label: "profile",
+      },
+    },
     $streams$files: {
       forward: {
         on: "$streams",
