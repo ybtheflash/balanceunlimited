@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { 
-  View, Text, TextInput, TouchableOpacity, ScrollView, 
+import {
+  View, Text, TextInput, TouchableOpacity, ScrollView,
   Alert, KeyboardAvoidingView, Platform, Keyboard, useWindowDimensions
 } from "react-native";
 import { ArrowLeft, Save, Trash2, Lock, FileText, Unlock, Shield, PenLine, Coins, Clock, ChevronRight } from "lucide-react-native";
@@ -31,26 +31,26 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
   const { user } = useAuth();
   const { width } = useWindowDimensions();
   const isDesktop = width >= 768;
-  
-  const { isLoading, error, data } = (db as any).useQuery({ 
-    notes: { 
-      $: { 
-        where: { creatorId: user?.id || "unknown" } 
+
+  const { isLoading, error, data } = (db as any).useQuery({
+    notes: {
+      $: {
+        where: { creatorId: user?.id || "unknown" }
       }
-    } 
+    }
   });
-  
+
   // Sort notes by createdAt descending and decrypt contents
-  const notes = (data?.notes as Note[] | undefined) 
+  const notes = (data?.notes as Note[] | undefined)
     ? [...(data?.notes as Note[])].sort((a, b) => b.createdAt - a.createdAt).map(note => ({
-        ...note,
-        content: decryptNote(note.content, user?.id || "unknown")
-      })) 
+      ...note,
+      content: decryptNote(note.content, user?.id || "unknown")
+    }))
     : [];
 
   const [currentText, setCurrentText] = useState("");
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  
+
   // Modals state
   const [paymentConfig, setPaymentConfig] = useState<{
     visible: boolean;
@@ -116,7 +116,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
 
   const executePaymentAction = () => {
     const { amount, actionType, targetNoteId } = paymentConfig;
-    
+
     // Try to spend — but don't block note saves on it
     const success = spend(amount, `Notepad: ${actionType}`);
 
@@ -125,7 +125,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
       const newNoteId = id();
       const userId = user?.id || "unknown";
       const encryptedContent = encryptNote(currentText, userId);
-      
+
       const newNote = {
         title: currentText.split("\n")[0].substring(0, 30) || "Untitled",
         content: encryptedContent,
@@ -133,7 +133,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
         creatorId: userId,
         createdAt: Date.now(),
       };
-      
+
       db.transact(
         db.tx.notes[newNoteId].update(newNote)
       ).then(() => {
@@ -144,7 +144,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
       });
       setCurrentText("");
       setSelectedNoteId(null);
-    } 
+    }
     else if (actionType === "unlock" && targetNoteId) {
       if (!success) {
         Alert.alert("Insufficient Balance", "You need KC to unlock this note.");
@@ -159,7 +159,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
         setCurrentText(unlockedNote.content);
         setSelectedNoteId(targetNoteId);
       }
-    } 
+    }
     else if (actionType === "delete" && targetNoteId) {
       db.transact(
         db.tx.notes[targetNoteId].delete()
@@ -169,7 +169,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
         setSelectedNoteId(null);
       }
     }
-    
+
     closePayment();
   };
 
@@ -186,7 +186,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
 
   return (
     <KeyboardAvoidingView className="flex-1 bg-zinc-950" behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      
+
       {/* Header */}
       <View className="px-5 pt-14 pb-4 border-b border-zinc-800/60 bg-zinc-950">
         <View className="flex-row items-center justify-between">
@@ -230,7 +230,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
       </View>
 
       <View className={`flex-1 ${isDesktop ? 'flex-row' : 'flex-col'}`}>
-        
+
         {/* ═══════════════════ EDITOR PANEL ═══════════════════ */}
         <View className={`${isDesktop ? 'flex-1' : 'flex-1'} bg-zinc-950`}>
           {/* Editor area */}
@@ -249,7 +249,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
               ]}
             />
           </View>
-          
+
           {/* Editor footer */}
           <View className="px-5 pb-4 pt-3 border-t border-zinc-800/40">
             <View className="flex-row items-center justify-between">
@@ -268,14 +268,13 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                   </Text>
                 </View>
               </View>
-              
+
               <TouchableOpacity
                 onPress={handleSavePress}
-                className={`flex-row items-center gap-2 px-5 py-2.5 rounded-full ${
-                  currentText.trim() 
-                    ? "bg-amber-500" 
+                className={`flex-row items-center gap-2 px-5 py-2.5 rounded-full ${currentText.trim()
+                    ? "bg-amber-500"
                     : "bg-zinc-800/50"
-                }`}
+                  }`}
                 disabled={!currentText.trim()}
                 activeOpacity={0.8}
               >
@@ -322,20 +321,19 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
               </Text>
             </View>
           ) : (
-            <ScrollView 
-              showsVerticalScrollIndicator={false} 
+            <ScrollView
+              showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 16 }}
             >
               {notes.map(note => {
                 const isSelected = selectedNoteId === note.id;
                 return (
-                  <View 
-                    key={note.id} 
-                    className={`rounded-2xl mb-2.5 overflow-hidden border ${
-                      isSelected 
-                        ? "bg-blue-500/5 border-blue-500/20" 
+                  <View
+                    key={note.id}
+                    className={`rounded-2xl mb-2.5 overflow-hidden border ${isSelected
+                        ? "bg-blue-500/5 border-blue-500/20"
                         : "bg-zinc-900/80 border-zinc-800/40"
-                    }`}
+                      }`}
                   >
                     <TouchableOpacity
                       onPress={() => handleUnlockPress(note)}
@@ -344,16 +342,15 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                     >
                       <View className="flex-row items-center gap-2.5">
                         {/* Icon */}
-                        <View className={`w-8 h-8 rounded-lg items-center justify-center ${
-                          note.isUnlocked ? 'bg-emerald-500/10' : 'bg-amber-500/10'
-                        }`}>
+                        <View className={`w-8 h-8 rounded-lg items-center justify-center ${note.isUnlocked ? 'bg-emerald-500/10' : 'bg-amber-500/10'
+                          }`}>
                           {note.isUnlocked ? (
                             <Unlock color="#10b981" size={14} />
                           ) : (
                             <Lock color="#f59e0b" size={14} />
                           )}
                         </View>
-                        
+
                         {/* Title + meta */}
                         <View className="flex-1">
                           <Text className="text-zinc-200 font-bold text-sm" numberOfLines={1}>
@@ -378,10 +375,10 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                         {/* Arrow / action */}
                         <ChevronRight color="#3f3f46" size={16} />
                       </View>
-                      
+
                       {/* Content preview */}
                       {note.isUnlocked && (
-                        <Text 
+                        <Text
                           className="text-zinc-500 text-xs mt-2 ml-10"
                           numberOfLines={2}
                           style={{ lineHeight: 18 }}
@@ -389,7 +386,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                           {note.content}
                         </Text>
                       )}
-                      
+
                       {!note.isUnlocked && (
                         <View className="mt-2 ml-10 bg-zinc-800/50 rounded-lg py-2 px-3 items-center">
                           <Text className="text-amber-500/60 text-[10px] font-bold uppercase tracking-wider">
@@ -398,13 +395,13 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                         </View>
                       )}
                     </TouchableOpacity>
-                    
+
                     {/* Delete row */}
                     <View className="border-t border-zinc-800/30 flex-row justify-between items-center px-3.5 py-1.5">
                       <Text className="text-zinc-700 text-[10px]">
                         {new Date(note.createdAt).toLocaleDateString()}
                       </Text>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => handleDeletePress(note.id)}
                         className="flex-row items-center gap-1 px-2 py-1 rounded-full"
                         activeOpacity={0.6}
