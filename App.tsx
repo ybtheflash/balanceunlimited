@@ -100,7 +100,7 @@ function TabNavigator() {
           tabBarButton: isLoggedIn ? undefined : () => null,
         }}
       >
-        {() => <WalletScreen onBack={() => {}} />}
+        {() => <WalletScreen onBack={() => { }} />}
       </Tab.Screen>
 
       <Tab.Screen
@@ -126,7 +126,7 @@ function AppContent() {
 
   // Not logged in and not guest → show login
   if (!isLoggedIn && !isGuest) {
-    return <LoginScreen onGuestContinue={() => {}} />;
+    return <LoginScreen onGuestContinue={() => { }} />;
   }
 
   return <TabNavigator />;
