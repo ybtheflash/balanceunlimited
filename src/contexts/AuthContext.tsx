@@ -134,6 +134,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // Existing user — check if 2FA is enabled
         const existingUser = existingProfile.data.profiles[0] as any;
+        
+        // Backfill appUniqueId for existing users if missing
+        if (!existingUser.appUniqueId) {
+          db.transact(
+            db.tx.profiles[res.user.id].update({
+              appUniqueId: generateAppUniqueId()
+            })
+          );
+        }
+
         if (existingUser.totpEnabled) {
           setBlock2FA(true);
           setPending2FA({ email, username });

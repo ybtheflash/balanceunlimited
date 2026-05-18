@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -37,6 +37,7 @@ import { db } from "../db/instant";
 import { AdBanner } from "../components/AdBanner";
 import { UserAvatar, AVATAR_KEYS } from "../components/UserAvatar";
 import PaymentModal from "../components/PaymentModal";
+import { generateAppUniqueId } from "../utils/ids";
 
 const USERNAME_CHANGE_COST = 500;
 const AD_REMOVAL_COST = 500;
@@ -72,6 +73,20 @@ export default function ProfileScreen({ onNavigateToStore, onNavigateToZestyAuth
 
   // Theme Picker
   const [showThemePicker, setShowThemePicker] = useState(false);
+
+  // Auto-backfill appUniqueId if missing for existing users when viewing profile
+  useEffect(() => {
+    if (isLoggedIn && user && (!user.appUniqueId || user.appUniqueId === "----------")) {
+      const newId = generateAppUniqueId();
+      db.transact(
+        db.tx.profiles[user.id].update({
+          appUniqueId: newId
+        })
+      ).catch((err) => {
+        console.error("Failed to backfill App ID:", err);
+      });
+    }
+  }, [user, isLoggedIn]);
 
   const handleThemeSelect = (selectedTheme: "light" | "dark" | "liquidGlass") => {
     if (!user) return;
