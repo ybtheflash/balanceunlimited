@@ -20,13 +20,13 @@ import {
 } from "lucide-react-native";
 import { useWallet, Transaction } from "../contexts/WalletContext";
 import { formatCurrency } from "../utils/currency";
+import { RAZORPAY_PORTAL_URL } from "@env";
 
 interface WalletScreenProps {
   onBack: () => void;
 }
 
 const TOPUP_OPTIONS = [100, 250, 500, 1000, 2500];
-const RAZORPAY_PORTAL_URL = "https://pages.razorpay.com/balanceunlimited-topup"; // Dummy URL
 
 export default function WalletScreen({ onBack }: WalletScreenProps) {
   const { balance, totalSpent, transactions, topup } = useWallet();

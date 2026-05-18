@@ -4,18 +4,20 @@ import {
   Text,
   FlatList,
   useWindowDimensions,
-  ActivityIndicator,
 } from "react-native";
 import { Trophy, TrendingUp } from "lucide-react-native";
-import { db } from "../db/instant";
 import { formatCurrency } from "../utils/currency";
+
+const MOCK_LEADERBOARD = [
+  { id: "1", username: "Whale King", avatar: "🐳", tier: "Whale", totalSpent: 25000 },
+  { id: "2", username: "Dolphin", avatar: "🐬", tier: "Power User", totalSpent: 12000 },
+  { id: "3", username: "Dev Admin", avatar: "👑", tier: "Whale", totalSpent: 5000 },
+  { id: "4", username: "Basic Bro", avatar: "🧑‍💻", tier: "Ya Basic", totalSpent: 150 },
+];
 
 export default function LeaderboardScreen() {
   const { width } = useWindowDimensions();
   const isWide = width > 600;
-
-  // Fetch all profiles from Instant DB
-  const { isLoading, data, error } = db.useQuery({ profiles: {} });
 
   const getMedalColor = (index: number) => {
     if (index === 0) return "#fbbf24"; // Gold
@@ -37,24 +39,7 @@ export default function LeaderboardScreen() {
     return "#71717a";
   };
 
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-zinc-950 items-center justify-center">
-        <ActivityIndicator color="#3b82f6" size="large" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View className="flex-1 bg-zinc-950 items-center justify-center">
-        <Text className="text-red-500">Failed to load leaderboard</Text>
-      </View>
-    );
-  }
-
-  // Sort by totalSpent descending
-  const leaderboardData = (data?.profiles || []).sort((a, b) => b.totalSpent - a.totalSpent);
+  const leaderboardData = MOCK_LEADERBOARD.sort((a, b) => b.totalSpent - a.totalSpent);
   const totalSpent = leaderboardData.reduce((sum, e) => sum + e.totalSpent, 0);
 
   const renderItem = ({ item, index }: { item: any; index: number }) => {

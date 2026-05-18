@@ -92,17 +92,16 @@ function TabNavigator() {
         }}
       />
 
-      {isLoggedIn && (
-        <Tab.Screen
-          name="WalletTab"
-          options={{
-            tabBarLabel: "Wallet",
-            tabBarIcon: ({ color, size }) => <Wallet color={color} size={size - 2} />,
-          }}
-        >
-          {() => <WalletScreen onBack={() => {}} />}
-        </Tab.Screen>
-      )}
+      <Tab.Screen
+        name="WalletTab"
+        options={{
+          tabBarLabel: "Wallet",
+          tabBarIcon: ({ color, size }) => <Wallet color={color} size={size - 2} />,
+          tabBarButton: isLoggedIn ? undefined : () => null,
+        }}
+      >
+        {() => <WalletScreen onBack={() => {}} />}
+      </Tab.Screen>
 
       <Tab.Screen
         name="ProfileTab"
