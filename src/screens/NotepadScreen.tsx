@@ -5,8 +5,11 @@ import {
 } from "react-native";
 import { ArrowLeft, Save, Trash2, Lock, FileText } from "lucide-react-native";
 import { useWallet } from "../contexts/WalletContext";
+import { useAuth } from "../contexts/AuthContext";
 import FlexScoreWidget from "../components/FlexScoreWidget";
 import PaymentModal from "../components/PaymentModal";
+import { db } from "../db/instant";
+import { id } from "@instantdb/react-native";
 
 interface NotepadScreenProps {
   onBack: () => void;
@@ -17,13 +20,27 @@ interface Note {
   title: string;
   content: string;
   isUnlocked: boolean;
+  createdAt: number;
+  creatorId: string;
 }
 
 import { formatCurrency } from "../utils/currency";
 
 export default function NotepadScreen({ onBack }: NotepadScreenProps) {
   const { totalSpent, spend } = useWallet();
-  const [notes, setNotes] = useState<Note[]>([]);
+  const { user } = useAuth();
+  
+  const { isLoading, error, data } = (db as any).useQuery({ 
+    notes: { 
+      $: { 
+        where: { creatorId: user?.id || "unknown" } 
+      }
+    } 
+  });
+  
+  // Sort notes by createdAt descending
+  const notes = (data?.notes as Note[] | undefined) ? [...(data?.notes as Note[])].sort((a, b) => b.createdAt - a.createdAt) : [];
+
   const [currentText, setCurrentText] = useState("");
   
   // Modals state
@@ -97,24 +114,31 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
 
     // Process action
     if (actionType === "save") {
-      const newNote: Note = {
-        id: Date.now().toString(),
-        title: currentText.split("\n")[0].substring(0, 20) || "Untitled",
-        content: currentText,
-        isUnlocked: true,
-      };
-      setNotes([newNote, ...notes]);
+      const newNoteId = id();
+      db.transact(
+        db.tx.notes[newNoteId].update({
+          title: currentText.split("\n")[0].substring(0, 20) || "Untitled",
+          content: currentText,
+          isUnlocked: true,
+          creatorId: user?.id || "unknown",
+          createdAt: Date.now(),
+        })
+      );
       setCurrentText("");
     } 
     else if (actionType === "unlock" && targetNoteId) {
-      setNotes(notes.map(n => n.id === targetNoteId ? { ...n, isUnlocked: true } : n));
+      db.transact(
+        db.tx.notes[targetNoteId].update({ isUnlocked: true })
+      );
       const unlockedNote = notes.find(n => n.id === targetNoteId);
       if (unlockedNote) {
         setCurrentText(unlockedNote.content);
       }
     } 
     else if (actionType === "delete" && targetNoteId) {
-      setNotes(notes.filter(n => n.id !== targetNoteId));
+      db.transact(
+        db.tx.notes[targetNoteId].delete()
+      );
       setCurrentText("");
     }
     
