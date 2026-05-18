@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { db } from "../db/instant";
 
 export interface User {
   id: string;
   email: string;
   username: string;
+  displayName: string;
   avatar: string;
   tier: string;
+  adsRemoved: boolean;
   isGuest: boolean;
-  isDevAdmin?: boolean;
 }
 
 interface AuthContextType {
@@ -18,44 +20,69 @@ interface AuthContextType {
   verifyCode: (email: string, code: string, username: string) => Promise<void>;
   logout: () => void;
   continueAsGuest: () => void;
-  devLogin: () => void;
+  promptLogin: () => void;
   isLoading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // HARDCODED DEV ACCOUNT FOR DEVELOPMENT BYPASS
-  const [user, setUser] = useState<User | null>({
-    id: "admin-001",
-    email: "admin@balanceunlimited.app",
-    username: "Dev Admin",
-    avatar: "👑",
-    tier: "Whale",
-    isGuest: false,
-    isDevAdmin: true,
-  });
+  const { isLoading: authLoading, user: authUser } = db.useAuth();
   const [isGuest, setIsGuest] = useState(false);
+  
+  // Fetch user profile from DB if logged in
+  const { isLoading: profileLoading, data } = db.useQuery(
+    authUser ? { profiles: { $: { where: { id: authUser.id } } } } : null
+  );
+
+  const profile = data?.profiles?.[0];
+
+  const user: User | null = authUser
+    ? {
+        id: authUser.id,
+        email: authUser.email || "",
+        username: profile?.username || (authUser.email ? authUser.email.split("@")[0] : "user"),
+        displayName: profile?.displayName || profile?.username || "Newbee",
+        avatar: profile?.avatar || "🧑‍💻",
+        tier: profile?.tier || "YaBasic",
+        adsRemoved: profile?.adsRemoved || false,
+        isGuest: false,
+      }
+    : null;
 
   const sendMagicCode = async (email: string) => {
-    console.log("Mock send magic code to", email);
+    await db.auth.sendMagicCode({ email });
   };
 
   const verifyCode = async (email: string, code: string, username: string) => {
-    console.log("Mock verify code", code);
-    setUser({
-      id: "user-" + Date.now(),
-      email,
-      username: username || email.split("@")[0],
-      avatar: "🧑‍💻",
-      tier: "Ya Basic",
-      isGuest: false,
-    });
-    setIsGuest(false);
+    const res = await db.auth.signInWithMagicCode({ email, code });
+    if (res.user) {
+      // Check if profile exists, if not create one
+      const existingProfile = await db.queryOnce({ profiles: { $: { where: { id: res.user.id } } } });
+      if (existingProfile.data.profiles.length === 0) {
+        const finalUsername = username || email.split("@")[0];
+        const halfName = finalUsername.slice(0, Math.max(1, Math.floor(finalUsername.length / 2)));
+        
+        db.transact(
+          db.tx.profiles[res.user.id].update({
+            id: res.user.id,
+            username: finalUsername,
+            displayName: "Newbee" + halfName,
+            avatar: "🧑‍💻",
+            tier: "YaBasic",
+            balance: 0,
+            totalSpent: 0,
+            adsRemoved: false,
+            joinedDate: Date.now(),
+          })
+        );
+      }
+      setIsGuest(false);
+    }
   };
 
   const logout = () => {
-    setUser(null);
+    db.auth.signOut();
     setIsGuest(false);
   };
 
@@ -63,16 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsGuest(true);
   };
 
-  const devLogin = () => {
-    setUser({
-      id: "admin-001",
-      email: "admin@balanceunlimited.app",
-      username: "Dev Admin",
-      avatar: "👑",
-      tier: "Whale",
-      isGuest: false,
-      isDevAdmin: true,
-    });
+  const promptLogin = () => {
     setIsGuest(false);
   };
 
@@ -86,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         verifyCode,
         logout,
         continueAsGuest,
-        devLogin,
-        isLoading: false,
+        promptLogin,
+        isLoading: authLoading || profileLoading,
       }}
     >
       {children}

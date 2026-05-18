@@ -47,7 +47,7 @@ export default function SplashScreen({ onFinish }: SplashScreenProps) {
 
       {/* Bottom tag */}
       <View className="absolute bottom-12 items-center">
-        <Text className="text-zinc-700 text-xs">Ya Basic™ Tier</Text>
+        <Text className="text-zinc-700 text-xs">YaBasic™ Tier</Text>
       </View>
     </View>
   );
