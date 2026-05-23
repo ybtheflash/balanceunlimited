@@ -12,6 +12,24 @@ import { db } from "../db/instant";
 import { id } from "@instantdb/react-native";
 import { encryptNote, decryptNote } from "../utils/encryption";
 import { formatCurrency } from "../utils/currency";
+import RichTextEditor from "../components/RichTextEditor";
+
+const stripHtml = (html: string): string => {
+  if (!html) return "";
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+};
+
+const getHtmlTitle = (html: string): string => {
+  if (!html) return "Untitled";
+  const lineSeparated = html
+    .replace(/<\/p>|<\/h1>|<\/h2>|<\/h3>|<\/li>|<\/blockquote>/gi, "\n")
+    .replace(/<[^>]*>/g, "");
+  const firstLine = lineSeparated.split("\n").map(l => l.trim()).find(l => l.length > 0);
+  return firstLine ? firstLine.substring(0, 30) : "Untitled";
+};
 
 interface NotepadScreenProps {
   onBack: () => void;
@@ -72,7 +90,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
   const closePayment = () => setPaymentConfig(prev => ({ ...prev, visible: false }));
 
   const handleSavePress = () => {
-    if (!currentText.trim()) return;
+    if (!stripHtml(currentText).trim()) return;
     Keyboard.dismiss();
     setPaymentConfig({
       visible: true,
@@ -127,7 +145,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
       const encryptedContent = encryptNote(currentText, userId);
 
       const newNote = {
-        title: currentText.split("\n")[0].substring(0, 30) || "Untitled",
+        title: getHtmlTitle(currentText),
         content: encryptedContent,
         isUnlocked: true,
         creatorId: userId,
@@ -232,21 +250,14 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
       <View className={`flex-1 ${isDesktop ? 'flex-row' : 'flex-col'}`}>
 
         {/* ═══════════════════ EDITOR PANEL ═══════════════════ */}
-        <View className={`${isDesktop ? 'flex-1' : 'flex-1'} bg-zinc-950`}>
+        <View className={`${isDesktop ? 'flex-1' : 'flex-1'} bg-zinc-950 overflow-hidden`}>
           {/* Editor area */}
-          <View className="flex-1 px-5 pt-5">
-            <TextInput
-              className="flex-1 text-zinc-100 text-base text-left"
-              placeholder="Start typing your premium thoughts..."
-              placeholderTextColor="#3f3f46"
-              multiline
-              textAlignVertical="top"
-              value={currentText}
-              onChangeText={setCurrentText}
-              style={[
-                { fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', lineHeight: 24 },
-                Platform.OS === 'web' ? { outlineStyle: 'none' as any } : {},
-              ]}
+          <View className="flex-1">
+            <RichTextEditor
+              initialValue={currentText}
+              onChange={setCurrentText}
+              placeholder="Start typing your premium thoughts... (Type '/' for commands)"
+              isLocked={selectedNoteId !== null && !notes.find(n => n.id === selectedNoteId)?.isUnlocked}
             />
           </View>
 
@@ -257,7 +268,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                 <View className="flex-row items-center gap-1.5">
                   <Lock color="#52525b" size={11} />
                   <Text className="text-zinc-600 text-[10px] font-bold uppercase tracking-wider">
-                    {currentText.length} chars
+                    {stripHtml(currentText).length} chars
                   </Text>
                 </View>
                 <View className="w-px h-3 bg-zinc-800" />
@@ -271,18 +282,18 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
 
               <TouchableOpacity
                 onPress={handleSavePress}
-                className={`flex-row items-center gap-2 px-5 py-2.5 rounded-full ${currentText.trim()
+                className={`flex-row items-center gap-2 px-5 py-2.5 rounded-full ${stripHtml(currentText).trim()
                     ? "bg-amber-500"
                     : "bg-zinc-800/50"
                   }`}
-                disabled={!currentText.trim()}
+                disabled={!stripHtml(currentText).trim()}
                 activeOpacity={0.8}
               >
-                <Save color={currentText.trim() ? "#000" : "#52525b"} size={16} />
-                <Text className={`font-bold text-sm ${currentText.trim() ? "text-black" : "text-zinc-600"}`}>
+                <Save color={stripHtml(currentText).trim() ? "#000" : "#52525b"} size={16} />
+                <Text className={`font-bold text-sm ${stripHtml(currentText).trim() ? "text-black" : "text-zinc-600"}`}>
                   Save
                 </Text>
-                {currentText.trim() && (
+                {stripHtml(currentText).trim() && (
                   <View className="flex-row items-center bg-amber-600/40 px-2 py-0.5 rounded-full ml-1">
                     <Coins color="#000" size={10} />
                     <Text className="text-black text-[10px] font-black ml-0.5">99</Text>
@@ -383,7 +394,7 @@ export default function NotepadScreen({ onBack }: NotepadScreenProps) {
                           numberOfLines={2}
                           style={{ lineHeight: 18 }}
                         >
-                          {note.content}
+                          {stripHtml(note.content)}
                         </Text>
                       )}
 
